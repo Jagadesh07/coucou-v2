@@ -7,7 +7,7 @@ import {
   CLOSED_BOT_D, CLOSED_H, closedContent, closedIsland, closedWidth, type ClosedContent,
 } from "../core/closed";
 import {
-  EXPANDED_CORNER, EXPANDED_W, NOTCH_W, PANEL_H, PANEL_W,
+  COMPACT_W, EXPANDED_CORNER, EXPANDED_W, NOTCH_H, NOTCH_W, PANEL_H, PANEL_W,
   ROUNDED_CORNER, VIEW_LAYOUTS, botGlowColor, botGlowOpacity, botPosition, chatPromptHeight,
   islandSize,
   QUESTION_PICKER_H,
@@ -31,7 +31,7 @@ import { buildNotificationBanner, type NotificationBanner } from "../views/notif
 import { type WindowsNotification } from "../core/notifications";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { MAIL_ID } from "../core/mail";
-import { h } from "../views/dom";
+import { clear, h } from "../views/dom";
 import { buildSessionDropList, type SessionDropList } from "../views/session-drop";
 import { DROP_TEXT_RIGHT_WITH_LIST, dropTargetAt, dropTargets } from "../core/launch";
 import { IslandStateMachine } from "./fsm";
@@ -79,13 +79,14 @@ export class Island {
   private clockEl!: HTMLElement;
   private synthEl!: HTMLElement;
   private clockTimer?: number;
+  private lastClockKey = "";
   /** The closed island's one line (core/closed.ts), and what it last showed. */
   private closedEl!: HTMLElement;
   private closedDot!: HTMLElement;
   private closedText!: HTMLElement;
   private closedKey = "";
-  /** Width of the closed island for what it shows now. */
-  private closedW = 120;
+  /** Width of the closed island for what it shows now. Defaults to compact island width so it doesn't shrink. */
+  private closedW = COMPACT_W;
   /** Mochi's little life in the closed island: where he looks, and until when
    *  the loop runs for what he is doing (a blink, a glance). */
   private closedLook = { x: 0, y: 0 };
@@ -493,7 +494,7 @@ export class Island {
 
   // ── Mode / view ─────────────────────────────────────────────────────────────
 
-  private setMode(mode: IslandMode) {
+  setMode(mode: IslandMode) {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
@@ -938,7 +939,11 @@ export class Island {
 
   private targetSize(): { w: number; h: number; r: number } {
     if (State.mode === "hidden" && this.closedShows) {
-      return { w: this.closedW, h: CLOSED_H, r: 10 };
+      const style = closedIsland(State.settings.closedIsland);
+      const isClock = style === "time" || style === "datetime";
+      const h = isClock ? NOTCH_H : CLOSED_H;
+      const r = isClock ? ROUNDED_CORNER : 10;
+      return { w: this.closedW, h, r };
     }
     let { w, h } = islandSize(State.mode, State.view, State.chatHistory.length);
     if (State.mode === "expanded" && State.view === "question" && State.pendingApproval?.questions) {
@@ -1059,7 +1064,10 @@ export class Island {
 
   /** Tells Rust the folded window's size: the closed island's, or none (the strip). */
   private sendCollapsedSize(force = false) {
-    const size = this.closedShows ? { w: this.closedW, h: CLOSED_H } : { w: 0, h: 0 };
+    const style = closedIsland(State.settings.closedIsland);
+    const isClock = style === "time" || style === "datetime";
+    const h = isClock ? NOTCH_H : CLOSED_H;
+    const size = this.closedShows ? { w: this.closedW, h } : { w: 0, h: 0 };
     if (!force && size.w === this.collapsedTo.w && size.h === this.collapsedTo.h) return;
     this.collapsedTo = size;
     if (size.w > 0) void Bridge.setCollapsed(true, size.w, size.h);
@@ -1085,15 +1093,38 @@ export class Island {
     const key = content ? `${style}|${content.text}|${content.dot ?? ""}|${content.note}` : style;
     const shown = State.mode === "hidden" && this.closedShows;
     this.closedEl.classList.toggle("on", shown && content != null);
+    const isClock = style === "time" || style === "datetime";
+    this.closedEl.classList.toggle("is-clock", isClock);
     if (key === this.closedKey) return;
     this.closedKey = key;
-    this.closedText.textContent = content?.text ?? "";
+    if (isClock && content?.text) {
+      if (style === "datetime") {
+        const doubleSpaceIdx = content.text.indexOf("  ");
+        if (doubleSpaceIdx !== -1) {
+          const d = content.text.slice(0, doubleSpaceIdx);
+          const t = content.text.slice(doubleSpaceIdx + 2);
+          this.renderClock(this.closedText, d, t);
+        } else {
+          const lastSpaceIdx = content.text.lastIndexOf(" ");
+          if (lastSpaceIdx !== -1) {
+            this.renderClock(this.closedText, content.text.slice(0, lastSpaceIdx), content.text.slice(lastSpaceIdx + 1));
+          } else {
+            this.renderClock(this.closedText, null, content.text);
+          }
+        }
+      } else {
+        this.renderClock(this.closedText, null, content.text);
+      }
+    } else {
+      this.closedText.textContent = content?.text ?? "";
+    }
     this.closedEl.classList.toggle("note", content?.note === true);
     this.closedDot.style.display = content?.dot ? "" : "none";
     if (content?.dot) this.closedDot.style.background = content.dot;
     // Measured as drawn: the font and the language decide the width.
+    // For clock display, maintain full standard compact island width so the island never shrinks.
     const extras = (content?.dot ? 12 : 0) + (content?.note ? 16 : 0);
-    const w = closedWidth(content ? this.closedText.scrollWidth : 0, extras);
+    const w = isClock ? COMPACT_W : closedWidth(content ? this.closedText.scrollWidth : 0, extras);
     if (w !== this.closedW) {
       this.closedW = w;
       if (State.mode === "hidden") {
@@ -1638,6 +1669,15 @@ export class Island {
     this.engine.setState(State.effectiveState);
   }
 
+  /** Formats date and gradient time elements cleanly without innerHTML. */
+  private renderClock(target: HTMLElement, dateStr: string | null, timeStr: string) {
+    clear(target);
+    if (dateStr) {
+      target.append(h("span", { class: "clock-date" }, dateStr), " ");
+    }
+    target.append(h("span", { class: "clock-time" }, timeStr));
+  }
+
   /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
   private updateClock() {
     this.updateClosed();
@@ -1648,8 +1688,11 @@ export class Island {
     const now = new Date();
     const date = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
     const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const text = `${date}  ${time}`;
-    if (this.clockEl.textContent !== text) this.clockEl.textContent = text;
+    const clockKey = `${date}|${time}`;
+    if (this.lastClockKey !== clockKey || !this.clockEl.firstChild) {
+      this.lastClockKey = clockKey;
+      this.renderClock(this.clockEl, date, time);
+    }
   }
 
   /** Applies settings coming from Rust at boot. */

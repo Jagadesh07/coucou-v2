@@ -362,15 +362,47 @@ body.in-browser {
   left: 50px;
   right: 56px;
   top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.85);
   pointer-events: none;
   transition: opacity 0.25s ease-in-out;
+  z-index: 4;
+}
+
+/* Gradient typography for the clock display (matches vibrant gradient text from reference image) */
+#island-clock .clock-date,
+#island-closed .clock-date {
+  font-family: "Bricolage Grotesque", var(--font);
+  font-weight: 700;
+  font-size: 11.5px;
+  color: rgba(245, 246, 248, 0.88);
+  letter-spacing: 0.01em;
+  margin-right: 6px;
+  display: inline-block;
+  vertical-align: baseline;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+#island-clock .clock-time,
+#island-closed .clock-time {
+  font-family: "Bricolage Grotesque", var(--font);
+  font-weight: 800;
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  background: linear-gradient(180deg, #5ffbe7 0%, #38bdf8 26%, #8b5cf6 52%, #ec4899 76%, #fca5a5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.95))
+          drop-shadow(0 2px 4px rgba(139, 92, 246, 0.45));
+  display: inline-block;
+  vertical-align: baseline;
 }
 
 /* Music Synthesizer / Audio Equalizer Visualizer */
@@ -566,6 +598,20 @@ body.in-browser {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+#island-closed.is-clock {
+  gap: 0;
+  padding: 0 20px;
+}
+
+#island-closed.is-clock .text {
+  overflow: visible;
+  text-overflow: clip;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 #island-closed .dot {
@@ -4405,4 +4451,127 @@ html[data-dir="rtl"] #views :is(.bubble, .reply .md-p, .reply .md-h, .reply .md-
 #island-notification.paused .notif-progress-fill {
   animation-play-state: paused;
 }
+
+/* ── Interactive Feature Tester Floating Toolbar ────────────────────────────── */
+#dev-tester {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  background: rgba(15, 17, 23, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(56, 189, 248, 0.15);
+  padding: 8px 12px;
+  max-width: 95vw;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font, sans-serif);
+  user-select: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#dev-tester.collapsed {
+  left: auto;
+  right: 18px;
+  bottom: 18px;
+  transform: none;
+  padding: 4px;
+  border-radius: 24px;
+  background: rgba(15, 17, 23, 0.85);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+#dev-tester.collapsed .tester-buttons,
+#dev-tester.collapsed .tester-title-wrap {
+  display: none !important;
+}
+
+.tester-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.tester-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(245, 246, 248, 0.95);
+}
+
+.tester-badge {
+  background: linear-gradient(135deg, #0ea5e9, #8b5cf6);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.tester-status {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tester-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tester-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.tester-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.tester-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(245, 246, 248, 0.9);
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.tester-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.tester-btn:active {
+  transform: translateY(0);
+}
+
 

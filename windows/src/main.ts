@@ -18,6 +18,7 @@ import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
 import { WhatsNew } from "./whats-new/controller";
 import { onLanguageChange, resolveLanguage, setLanguage, systemLanguages } from "./i18n/i18n";
+import { initDevTester } from "./dev/tester";
 
 /** Shows the language Settings asks for ("" = the system's, when Coucou has it). */
 function applyLanguage() {
@@ -192,6 +193,10 @@ async function main() {
   await onEvent<null>("recap-check", checkRecap);
 
   island.launch();
+
+  if (!IS_TAURI || import.meta.env.DEV) {
+    initDevTester(island);
+  }
 
   // In a plain browser there is no wake strip behind the cursor: make the whole
   // page wake the island so the visuals can be checked with `npm run dev`.
