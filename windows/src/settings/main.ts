@@ -10,7 +10,7 @@ import {
   ISLAND_SHORTCUTS, SHORTCUTS, SHORTCUT_TEXT, activeKeys, displayKeys, duplicates, effective,
   recordPress, type Binding,
 } from "../core/shortcuts";
-import { DEFAULT_SETTINGS, type Settings } from "../core/state";
+import { DEFAULT_SETTINGS, defaultUserName, type Settings } from "../core/state";
 import { closedIsland } from "../core/closed";
 import type { UpdateStatus } from "../core/update";
 import { Sound, SOUND_NAMES } from "../core/sound";
@@ -21,12 +21,13 @@ import {
 import { h, clear } from "../views/dom";
 import { startHub, type PageId } from "../hub/shell";
 import { FLOW_PAGE_RENDERERS } from "../hub/pages";
-import { claudeModelControl } from "./claude-models";
+import { geminiModelControl } from "./gemini-models";
 import { agentsSection } from "./agents";
 import { phoneSection } from "./phone";
 import { whatsappSection } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { updateRows, updatesListener } from "./updates";
+import { NotificationCenter } from "../core/notifications";
 import { colorDot } from "./colors";
 import { renderDiff, statusDot } from "./parts";
 import { dropdownSelect } from "../views/dropdown";
@@ -423,13 +424,13 @@ function subscriptionsSection(): HTMLElement {
   );
 }
 
-// ── Claude API section ────────────────────────────────────────────────────────
+// ── Google Gemini Base Assistant API section ──────────────────────────────────
 
-/** The state line under Claude: the key, else Claude Code (switched on above), else what is missing. */
+/** The state line under Gemini: the key, else subscription (switched on above), else what is missing. */
 function apiState(hasKey: boolean, relay: boolean): string {
   if (hasKey) return t("Key saved in the {store}.", { store: KEY_STORE });
   return relay
-    ? t("No key: the chat can go through your Claude subscription above.")
+    ? t("No key: the chat can go through your Google subscription above.")
     : t("No key yet — the chat needs one.");
 }
 
@@ -439,7 +440,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
 
   const field = h("input", {
     type: "password",
-    placeholder: hasKey ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...",
+    placeholder: hasKey ? `••••••••••••  ${t("(stored)")}` : "AIza...",
     style: "flex:1 1 auto;min-width:0",
     autocomplete: "off",
     spellcheck: "false",
@@ -450,11 +451,11 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
   const feedback = h("div", {});
 
   async function refresh() {
-    const present = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-    const ready = (await Bridge.claudeReady()) ?? false;
-    dot.style.background = ready ? "#22c55e" : "#f4505e";
+    const present = (await Bridge.secretPresent("google-api-key")) ?? false;
+    const ready = (await Bridge.keyReady("google-api-key")) ?? false;
+    dot.style.background = ready || present ? "#22c55e" : "#f4505e";
     state.textContent = apiState(present, ready && !present);
-    field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "sk-ant-...";
+    field.placeholder = present ? `••••••••••••  ${t("(stored)")}` : "AIza...";
     clearBtn.style.display = present ? "" : "none";
     void model.reload(present);
   }
@@ -464,7 +465,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     if (!value) return;
     clear(feedback);
     try {
-      await Bridge.secretSet("anthropic-api-key", value);
+      await Bridge.secretSet("google-api-key", value);
       field.value = "";
       feedback.append(h("div", { class: "notice ok", text: t("Saved. It never touches disk.") }));
       await refresh();
@@ -476,7 +477,7 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
   clearBtn.addEventListener("click", async () => {
     clear(feedback);
     try {
-      await Bridge.secretClear("anthropic-api-key");
+      await Bridge.secretClear("google-api-key");
       feedback.append(h("div", { class: "notice ok", text: t("Key removed.") }));
       await refresh();
     } catch (err) {
@@ -484,10 +485,14 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
     }
   });
 
-  const model = claudeModelControl(() => settings.model, async (value) => {
-    await Bridge.saveSettings({ ...settings, model: value });
-    settings.model = value;
-  });
+  const model = geminiModelControl(
+    () => settings.chatModels["google"] || settings.model || "gemini-2.0-flash",
+    async (value) => {
+      settings.model = value;
+      settings.chatModels["google"] = value;
+      await Bridge.saveSettings(settings);
+    },
+  );
   void model.reload(hasKey);
 
   clearBtn.style.display = hasKey ? "" : "none";
@@ -495,9 +500,10 @@ function apiSection(hasKey: boolean, relay: boolean): HTMLElement {
   return h(
     "section",
     {},
-    h("h2", {}, dot, h("span", { text: "Claude" })),
+    h("h2", {}, dot, h("span", { text: "Google Gemini (Base Assistant)" })),
     state,
     h("div", { class: "row" }, h("label", { text: t("API key") }), field, saveBtn, clearBtn),
+    h("div", { class: "hint", style: "margin:-4px 0 0 144px", text: t("Key from {site}", { site: "aistudio.google.com" }) }),
     model.element,
     feedback,
   );
@@ -588,7 +594,7 @@ function activePillsSection(connected: Record<string, boolean>): HTMLElement {
 
 const CHAT_STRINGS = {
   get providersTitle() { return t("Chat providers"); },
-  get providersHint() { return t("Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer."); },
+  get providersHint() { return t("Chat with Anthropic (Claude), OpenAI or OpenRouter instead of Google Gemini: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain."); },
   get stored() { return `••••••••  ${t("(stored)")}`; },
   get save() { return t("Save"); },
   get remove() { return t("Remove"); },
@@ -610,14 +616,14 @@ const CHAT_STRINGS = {
 };
 
 interface CloudDef {
-  id: "google" | "openai" | "openrouter";
+  id: "anthropic" | "openai" | "openrouter";
   name: string;
   placeholder: string;
   where: string;
 }
 
 const CLOUD: CloudDef[] = [
-  { id: "google", name: "Google AI", placeholder: "AIza…", where: "aistudio.google.com" },
+  { id: "anthropic", name: "Anthropic (Claude)", placeholder: "sk-ant-…", where: "console.anthropic.com" },
   { id: "openai", name: "OpenAI", placeholder: "sk-…", where: "platform.openai.com" },
   { id: "openrouter", name: "OpenRouter", placeholder: "sk-or-…", where: "openrouter.ai/keys" },
 ];
@@ -759,7 +765,7 @@ function localSection(customKey: boolean): HTMLElement {
       const disconnect = h("button", { class: "danger", text: CHAT_STRINGS.disconnect });
       disconnect.addEventListener("click", async () => {
         settings[field] = "";
-        if (settings.chatProvider === id) settings.chatProvider = "anthropic";
+        if (settings.chatProvider === id) settings.chatProvider = "google";
         if (id === "custom") {
           await Bridge.secretClear(CUSTOM_SERVER_KEY).catch(() => {});
           customKey = false;
@@ -1102,6 +1108,28 @@ function generalSection(): HTMLElement {
     if (!screen.value) screen.value = "primary";
   });
 
+  const userNameInput = h("input", {
+    type: "text",
+    value: settings.userName || defaultUserName(),
+    style: "width:140px",
+  }) as HTMLInputElement;
+  userNameInput.addEventListener("change", () => {
+    settings.userName = userNameInput.value.trim() || defaultUserName();
+    userNameInput.value = settings.userName;
+    void save();
+  });
+
+  const fontOptions: [string, string][] = [
+    ["bricolage", "Bricolage Grotesque"],
+    ["inter", "Inter"],
+    ["mono", "Cascadia Mono"],
+    ["system", "System UI"],
+  ];
+  const userFontDropdown = dropdownSelect(fontOptions, settings.userFont || "bricolage", (v) => {
+    settings.userFont = v;
+    void save();
+  });
+
   const sound = toggle(settings.soundEnabled, (v) => { settings.soundEnabled = v; void save(); });
   const openOnHover = toggle(settings.openOnHover, (v) => { settings.openOnHover = v; void save(); });
   const autostart = toggle(settings.autostart, (v) => { settings.autostart = v; void save(); });
@@ -1116,14 +1144,24 @@ function generalSection(): HTMLElement {
     if (document.activeElement !== autoClose) {
       autoClose.value = String(Math.round(settings.autoCloseInterval));
     }
+    if (document.activeElement !== userNameInput) {
+      userNameInput.value = settings.userName || defaultUserName();
+    }
+    userFontDropdown.value = settings.userFont || "bricolage";
   };
   volume.addEventListener("blur", () => generalSync?.());
   autoClose.addEventListener("blur", () => generalSync?.());
+  userNameInput.addEventListener("blur", () => generalSync?.());
 
   return h(
     "section",
     {},
     h("h2", {}, h("span", { text: t("General") })),
+    h("div", { class: "row" },
+      h("label", { text: t("Name") }),
+      userNameInput,
+      userFontDropdown,
+    ),
     h("div", { class: "row" },
       h("label", { text: t("Sound") }),
       sound,
@@ -1163,6 +1201,43 @@ function generalSection(): HTMLElement {
     h("div", { class: "row" },
       h("label", { text: t("Launch at startup") }),
       autostart,
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Windows notifications on Island" }),
+      toggle(settings.windowsNotifications !== false, (v) => { settings.windowsNotifications = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: "Receive and display notifications from Windows apps on the island." }),
+    h("div", { class: "row" },
+      h("label", { text: "Expand island on notification" }),
+      toggle(settings.expandOnNotification !== false, (v) => { settings.expandOnNotification = v; void save(); }),
+    ),
+    h("div", { class: "hint", text: "Automatically expand the island to show incoming WhatsApp and system notifications." }),
+    h("div", { class: "row" },
+      h("label", { text: "Test notifications" }),
+      h("button", {
+        text: "Test WhatsApp",
+        onclick: () => {
+          NotificationCenter.notify({
+            app: "WhatsApp",
+            title: "Marie",
+            body: "Hey! Let's catch up later today.",
+            accentColor: "#25D366",
+            source: "whatsapp",
+          });
+        },
+      }),
+      h("button", {
+        text: "Test Windows",
+        onclick: () => {
+          NotificationCenter.notify({
+            app: "Windows",
+            title: "Windows Security",
+            body: "Your device is protected and all systems are operational.",
+            accentColor: "#00A4EF",
+            source: "system",
+          });
+        },
+      }),
     ),
     ...recapRows(),
     ...updateRows(toggle, version),
@@ -1565,8 +1640,8 @@ async function render() {
   };
   const agents = await Bridge.agentHooksList();
 
-  const hasKey = (await Bridge.secretPresent("anthropic-api-key")) ?? false;
-  const claudeRelay = !hasKey && ((await Bridge.claudeReady()) ?? false);
+  const hasKey = (await Bridge.secretPresent("google-api-key")) ?? false;
+  const googleRelay = !hasKey && ((await Bridge.keyReady("google-api-key")) ?? false);
   const shortcutReport = await Bridge.shortcutsStatus();
 
   const keys = [
@@ -1607,7 +1682,7 @@ async function render() {
     general: () => [generalSection()],
     pills: () => [activePillsSection(connected)],
     agents: () => [claudeSection(status), agentsSection(agents), planSection(status)],
-    chat: () => [subscriptionsSection(), apiSection(hasKey, claudeRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
+    chat: () => [subscriptionsSection(), apiSection(hasKey, googleRelay), chatProvidersSection(chatKeys, keyChanged), localSection(customKey)],
     integrations: () => [integrationsSection(present), ...whatsappSections()],
     phone: () => [phoneSection(settings.phoneLink ?? false, toggle, settings)],
     shortcuts: () => [shortcutsSection(shortcutReport)],

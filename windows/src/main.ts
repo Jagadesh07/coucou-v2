@@ -12,6 +12,7 @@ import { registerShortcutHandlers } from "./island/shortcuts";
 import { registerVoiceHandlers } from "./island/voice";
 import { applySpotify, registerSpotifyHandlers } from "./island/spotify";
 import { registerWhatsAppHandlers } from "./island/whatsapp";
+import { registerNotificationHandlers } from "./island/notifications";
 import { SPOTIFY_ID } from "./core/spotify";
 import { Recap } from "./recap/recap";
 import { Updates } from "./island/update";
@@ -26,6 +27,10 @@ function applyLanguage() {
 async function main() {
   const root = document.getElementById("root");
   if (!root) return;
+
+  if (!IS_TAURI) {
+    document.body.classList.add("in-browser");
+  }
 
   void Sound.preload();
 
@@ -165,6 +170,7 @@ async function main() {
   registerVoiceHandlers();
   registerSpotifyHandlers(island);
   registerWhatsAppHandlers(island);
+  registerNotificationHandlers(island);
   // New versions: Rust offers the card, the island opens it when nothing else waits.
   await Updates.register(island);
   // Rust may have read Spotify before this page listened: ask once.

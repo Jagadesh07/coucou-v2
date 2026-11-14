@@ -102,6 +102,135 @@ Pills: {pills}",
     )
 }
 
+async fn gemini_voice_turn(system: &str, messages: &[Value], tools: &[Value]) -> Result<Value, String> {
+    let key = crate::secrets::get("google-api-key").ok_or_else(|| "Google API key missing".to_string())?;
+    let endpoint = reqwest::Url::parse("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions").map_err(|e| e.to_string())?;
+    let mut formatted_msgs = vec![json!({ "role": "system", "content": system })];
+    for m in messages {
+        let role = m["role"].as_str().unwrap_or("user");
+        let content = &m["content"];
+        if let Some(arr) = content.as_array() {
+            let has_tool_result = arr.iter().any(|b| b["type"] == "tool_result");
+            if has_tool_result {
+                for b in arr {
+                    if b["type"] == "tool_result" {
+                        formatted_msgs.push(json!({
+                            "role": "tool",
+                            "tool_call_id": b["tool_use_id"].as_str().unwrap_or(""),
+                            "content": b["content"].as_str().unwrap_or("")
+                        }));
+                    }
+                }
+                continue;
+            }
+            let mut text = String::new();
+            let mut tool_calls = Vec::new();
+            for b in arr {
+                if b["type"] == "text" {
+                    if let Some(t) = b["text"].as_str() { text.push_str(t); }
+                } else if b["type"] == "tool_use" {
+                    tool_calls.push(json!({
+                        "id": b["id"].as_str().unwrap_or(""),
+                        "type": "function",
+                        "function": {
+                            "name": b["name"].as_str().unwrap_or(""),
+                            "arguments": serde_json::to_string(&b["input"]).unwrap_or_else(|_| "{}".to_string())
+                        }
+                    }));
+                }
+            }
+            if !tool_calls.is_empty() {
+                formatted_msgs.push(json!({
+                    "role": "assistant",
+                    "content": if text.is_empty() { Value::Null } else { json!(text) },
+                    "tool_calls": tool_calls
+                }));
+            } else {
+                formatted_msgs.push(json!({ "role": role, "content": text }));
+            }
+        } else if let Some(s) = content.as_str() {
+            formatted_msgs.push(json!({ "role": role, "content": s }));
+        }
+    }
+
+    let mut function_tools = Vec::new();
+    for t in tools {
+        if let Some(name) = t["name"].as_str() {
+            if let Some(schema) = t.get("input_schema") {
+                function_tools.push(json!({
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "description": t["description"].as_str().unwrap_or(""),
+                        "parameters": schema
+                    }
+                }));
+            }
+        }
+    }
+
+    let mut body = json!({
+        "model": "gemini-2.0-flash",
+        "messages": formatted_msgs,
+        "max_tokens": 1024
+    });
+    if !function_tools.is_empty() {
+        body["tools"] = json!(function_tools);
+    }
+
+    let response = crate::net::client(&endpoint, Duration::from_secs(45))?
+        .post(endpoint)
+        .bearer_auth(&key)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {e}"))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let err_body = crate::net::read_capped(response, crate::net::MAX_ERROR_BODY).await.unwrap_or_default();
+        return Err(format!("Gemini API {status}: {}", crate::net::error_detail(&err_body)));
+    }
+    let bytes = crate::net::read_capped(response, crate::net::MAX_BODY).await?;
+    let resp: Value = serde_json::from_slice(&bytes).map_err(|e| format!("Bad API response: {e}"))?;
+
+    let choice = resp.pointer("/choices/0").ok_or_else(|| "No choices in response".to_string())?;
+    let finish = choice["finish_reason"].as_str().unwrap_or("stop");
+    let msg = &choice["message"];
+
+    let mut content = Vec::new();
+    if let Some(txt) = msg["content"].as_str() {
+        if !txt.is_empty() {
+            content.push(json!({ "type": "text", "text": txt }));
+        }
+    }
+    if let Some(calls) = msg["tool_calls"].as_array() {
+        for call in calls {
+            let id = call["id"].as_str().unwrap_or("");
+            let name = call.pointer("/function/name").and_then(Value::as_str).unwrap_or("");
+            let raw_args = call.pointer("/function/arguments").and_then(Value::as_str).unwrap_or("{}");
+            let input: Value = serde_json::from_str(raw_args).unwrap_or_else(|_| json!({}));
+            content.push(json!({
+                "type": "tool_use",
+                "id": id,
+                "name": name,
+                "input": input
+            }));
+        }
+    }
+
+    let stop_reason = if finish == "tool_calls" || content.iter().any(|b| b["type"] == "tool_use") {
+        "tool_use"
+    } else {
+        "end_turn"
+    };
+
+    Ok(json!({
+        "content": content,
+        "stop_reason": stop_reason
+    }))
+}
+
 impl Brain {
     pub fn respond(&mut self, app: &AppHandle, transcript: &str) -> Option<Reply> {
         if self.last.elapsed() > FORGET_AFTER {
@@ -119,21 +248,26 @@ impl Brain {
             .unwrap_or_default();
         let mut acted = false;
         let mut spoken = String::new();
+        let has_google = crate::secrets::present("google-api-key");
         for _ in 0..5 {
             let turn = tauri::async_runtime::block_on(async {
-                match crate::claude::voice_turn(FAST_MODEL, &system, &self.messages, &tools).await {
-                    Ok(v) => Ok(v),
-                    Err(err) if !chat_model.is_empty() => {
-                        crate::log::line(format!("voice: {err}; the chat's model instead"));
-                        crate::claude::voice_turn(&chat_model, &system, &self.messages, &tools).await
+                if has_google {
+                    gemini_voice_turn(&system, &self.messages, &tools).await
+                } else {
+                    match crate::claude::voice_turn(FAST_MODEL, &system, &self.messages, &tools).await {
+                        Ok(v) => Ok(v),
+                        Err(err) if !chat_model.is_empty() => {
+                            crate::log::line(format!("voice: {err}; the chat's model instead"));
+                            crate::claude::voice_turn(&chat_model, &system, &self.messages, &tools).await
+                        }
+                        Err(err) => Err(err),
                     }
-                    Err(err) => Err(err),
                 }
             });
             let turn = match turn {
                 Ok(t) => t,
                 Err(err) => {
-                    crate::log::line(format!("voice: Claude turn failed: {err}"));
+                    crate::log::line(format!("voice: assistant turn failed: {err}"));
                     if self.messages.last().is_some_and(|m| m["content"].is_string()) {
                         self.messages.pop();
                     }

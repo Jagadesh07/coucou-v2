@@ -118,7 +118,7 @@ export interface Settings {
   screen: string;
   autostart: boolean;
   hooksInstalled: boolean;
-  /** Claude model used by the chat. */
+  /** Model used by the chat (Google Gemini or Claude). */
   model: string;
   /** Show the Claude plan pill (5 h and weekly limits) in the island's header. */
   showPlanInNotch: boolean;
@@ -172,9 +172,35 @@ export interface Settings {
     onDesktop: boolean;
     spot: { x: number; y: number; space: string } | null;
   };
+  /** The user's name shown at the top of the island. */
+  userName?: string;
+  /** Font style for the top user name: "bricolage", "inter", "mono", "system". */
+  userFont?: string;
+  /** Show Windows & WhatsApp notifications on the island. */
+  windowsNotifications?: boolean;
+  /** Expand the island automatically when a notification arrives. */
+  expandOnNotification?: boolean;
+}
+
+declare const __WINDOWS_USERNAME__: string | undefined;
+
+/** Returns the Windows system user name. */
+export function defaultUserName(): string {
+  if (typeof __WINDOWS_USERNAME__ !== "undefined" && __WINDOWS_USERNAME__) {
+    return __WINDOWS_USERNAME__;
+  }
+  const proc = (globalThis as unknown as { process?: { env?: Record<string, string> } }).process;
+  if (proc?.env?.USERNAME || proc?.env?.USER) {
+    return proc.env.USERNAME || proc.env.USER || "jagad";
+  }
+  return "jagad";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  userName: defaultUserName(),
+  userFont: "bricolage",
+  windowsNotifications: true,
+  expandOnNotification: true,
   soundEnabled: true,
   soundVolume: 0.12,
   autoCloseInterval: 15,
@@ -195,8 +221,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showPlanInCompactIsland: false,
   planRelayInstalled: false,
   showCodexPlanInNotch: false,
-  chatProvider: "anthropic",
-  chatModels: {},
+  chatProvider: "google",
+  chatModels: { google: "gemini-2.0-flash" },
   chatSubscriptions: {},
   ollamaUrl: "",
   lmstudioUrl: "",

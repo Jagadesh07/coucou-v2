@@ -173,6 +173,7 @@ let BotStates: [BotState: BotStateCfg] = [
 @MainActor
 final class BotEngine: ObservableObject {
     var isMini: Bool = false
+    var puppyEars: Bool = false
     var bodyColor: CGColor? = nil    // override for mini bots
     /// A new version waits (BotCanvasView sets it while Mochi has nothing else to say):
     /// the blue up-arrow badge instead of the state's own.
@@ -1144,6 +1145,11 @@ final class BotEngine: ObservableObject {
         // Body path (superellipse for Mochi, morph to rect for upload)
         let bodyPath = mochiPath(rx: rx, ry: ry, morph: morph, R: R)
 
+        // Puppy ears for mini characters
+        if isMini || puppyEars {
+            drawPuppyEars(ctx: &ctx, R: R, rx: rx, ry: ry)
+        }
+
         // Body fill
         drawBody(ctx: &ctx, path: bodyPath, R: R, rx: rx, ry: ry,
                  pumpkinColors: outfit == .pumpkin && !isMini)
@@ -1494,6 +1500,91 @@ final class BotEngine: ObservableObject {
                 center: CGPoint(x: rx*0.34, y: -ry*0.46),
                 startRadius: 0,
                 endRadius: R*0.42
+            ))
+        }
+    }
+
+    private func drawPuppyEars(ctx: inout GraphicsContext, R: CGFloat, rx: CGFloat, ry: CGFloat) {
+        let t = CACurrentMediaTime()
+        let bc = bodyColor
+
+        for sd in [-1.0, 1.0] {
+            let rootX = sd * rx * 0.52
+            let rootY = -ry * 0.62
+
+            let sway = sin(t * 3.0 + (sd > 0 ? 0.8 : 0)) * 0.07 - yaw * 0.12 * sd + physDx * 0.14 * sd
+
+            var earCtx = ctx
+            earCtx.translateBy(x: rootX, y: rootY)
+            earCtx.rotate(by: .radians(sway))
+            earCtx.translateBy(x: -rootX, y: -rootY)
+
+            var p = Path()
+            p.move(to: CGPoint(x: sd * rx * 0.42, y: -ry * 0.58))
+            p.addCurve(
+                to: CGPoint(x: sd * rx * 1.02, y: -ry * 0.76),
+                control1: CGPoint(x: sd * rx * 0.52, y: -ry * 1.06),
+                control2: CGPoint(x: sd * rx * 0.88, y: -ry * 1.08)
+            )
+            p.addCurve(
+                to: CGPoint(x: sd * rx * 1.15, y: ry * 0.55),
+                control1: CGPoint(x: sd * rx * 1.30, y: -ry * 0.30),
+                control2: CGPoint(x: sd * rx * 1.28, y: ry * 0.25)
+            )
+            p.addCurve(
+                to: CGPoint(x: sd * rx * 0.72, y: ry * 0.42),
+                control1: CGPoint(x: sd * rx * 1.02, y: ry * 0.68),
+                control2: CGPoint(x: sd * rx * 0.80, y: ry * 0.65)
+            )
+            p.addCurve(
+                to: CGPoint(x: sd * rx * 0.48, y: -ry * 0.45),
+                control1: CGPoint(x: sd * rx * 0.62, y: ry * 0.15),
+                control2: CGPoint(x: sd * rx * 0.52, y: -ry * 0.20)
+            )
+            p.closeSubpath()
+
+            if let bc = bc {
+                earCtx.fill(p, with: .color(Color(cgColor: bc).opacity(0.95)))
+            } else {
+                let top = Color(red: 0.929, green: 0.929, blue: 0.937)
+                let bot = Color(red: 0.769, green: 0.773, blue: 0.792)
+                earCtx.fill(p, with: .linearGradient(
+                    Gradient(colors: [top, bot]),
+                    startPoint: CGPoint(x: sd * rx * 0.5, y: -ry * 0.9),
+                    endPoint: CGPoint(x: sd * rx * 1.2, y: ry * 0.6)
+                ))
+            }
+
+            var pInner = Path()
+            pInner.move(to: CGPoint(x: sd * rx * 0.65, y: -ry * 0.55))
+            pInner.addCurve(
+                to: CGPoint(x: sd * rx * 1.05, y: -ry * 0.45),
+                control1: CGPoint(x: sd * rx * 0.76, y: -ry * 0.85),
+                control2: CGPoint(x: sd * rx * 0.95, y: -ry * 0.75)
+            )
+            pInner.addCurve(
+                to: CGPoint(x: sd * rx * 1.05, y: ry * 0.45),
+                control1: CGPoint(x: sd * rx * 1.18, y: -ry * 0.10),
+                control2: CGPoint(x: sd * rx * 1.16, y: ry * 0.20)
+            )
+            pInner.addCurve(
+                to: CGPoint(x: sd * rx * 0.76, y: ry * 0.35),
+                control1: CGPoint(x: sd * rx * 0.95, y: ry * 0.54),
+                control2: CGPoint(x: sd * rx * 0.82, y: ry * 0.50)
+            )
+            pInner.addCurve(
+                to: CGPoint(x: sd * rx * 0.65, y: -ry * 0.55),
+                control1: CGPoint(x: sd * rx * 0.68, y: ry * 0.12),
+                control2: CGPoint(x: sd * rx * 0.60, y: -ry * 0.20)
+            )
+            pInner.closeSubpath()
+
+            let pinkTop = Color(red: 1.0, green: 0.725, blue: 0.804).opacity(0.88)
+            let pinkBot = Color(red: 0.961, green: 0.588, blue: 0.706).opacity(0.80)
+            earCtx.fill(pInner, with: .linearGradient(
+                Gradient(colors: [pinkTop, pinkBot]),
+                startPoint: CGPoint(x: sd * rx * 0.7, y: -ry * 0.5),
+                endPoint: CGPoint(x: sd * rx * 1.05, y: ry * 0.4)
             ))
         }
     }

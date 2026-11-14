@@ -15,7 +15,9 @@ use tauri::AppHandle;
 use crate::settings::Settings;
 use crate::{claude, cli_relay, local_chat, openai_compat, secrets};
 
+pub const GOOGLE: &str = "google";
 pub const ANTHROPIC: &str = "anthropic";
+pub const DEFAULT_PROVIDER: &str = GOOGLE;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -164,9 +166,22 @@ pub fn plain_question(first: bool, context: Option<&ChatContext>, query: &str) -
 
 /// The model chosen for `provider`, or its default.
 pub fn model_for(settings: &Settings, provider: &str) -> String {
+    if provider == GOOGLE {
+        return settings
+            .chat_models
+            .get(provider)
+            .map(|m| m.trim().to_string())
+            .filter(|m| !m.is_empty())
+            .or_else(|| {
+                let m = settings.model.trim();
+                if m.starts_with("gemini") { Some(m.to_string()) } else { None }
+            })
+            .or_else(|| openai_compat::provider(provider).map(|p| p.default_model.to_string()))
+            .unwrap_or_else(|| "gemini-2.0-flash".to_string());
+    }
     if provider == ANTHROPIC {
         let m = settings.model.trim();
-        return if m.is_empty() { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
+        return if m.is_empty() || m.starts_with("gemini") { claude::DEFAULT_MODEL.to_string() } else { m.to_string() };
     }
     settings
         .chat_models
@@ -210,12 +225,17 @@ pub async fn send(
     context: Option<ChatContext>,
 ) -> Result<ChatReply, String> {
     let context = context.map(checked_context).transpose()?;
-    let provider = settings.chat_provider.as_str();
+    let provider = if settings.chat_provider.is_empty() { GOOGLE } else { settings.chat_provider.as_str() };
     let model = model_for(settings, provider);
     if cli_relay::uses_subscription(settings, provider) {
         return cli_relay::send(chat, provider, &model, query, context).await;
     }
-    if provider == ANTHROPIC || provider.is_empty() {
+    if provider == GOOGLE {
+        if let Some(p) = openai_compat::provider(provider) {
+            return openai_compat::send(chat, p, &model, query, context).await;
+        }
+    }
+    if provider == ANTHROPIC {
         return claude::send(chat, &model, query, context).await;
     }
     if let Some(p) = openai_compat::provider(provider) {
@@ -238,8 +258,14 @@ pub async fn send_for_phone(
     query: String,
     on_delta: impl FnMut(String),
 ) -> Result<ChatReply, String> {
+    let provider = if provider.is_empty() { GOOGLE } else { provider };
     if cli_relay::uses_subscription(settings, provider) {
         return cli_relay::send(chat, provider, model, query, None).await;
+    }
+    if provider == GOOGLE {
+        if let Some(p) = openai_compat::provider(provider) {
+            return openai_compat::send(chat, p, model, query, None).await;
+        }
     }
     if provider == ANTHROPIC {
         return claude::send(chat, model, query, None).await;
@@ -258,6 +284,7 @@ pub async fn send_for_phone(
 /// address): nothing is sent anywhere before that.
 pub async fn models(settings: &Settings, provider: &str) -> Result<Vec<ModelInfo>, String> {
     let no_key = || crate::i18n::t("No API key — add it in Settings.");
+    let provider = if provider.is_empty() { GOOGLE } else { provider };
     if cli_relay::uses_subscription(settings, provider) {
         return Ok(cli_relay::models(provider));
     }

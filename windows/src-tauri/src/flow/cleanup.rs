@@ -19,7 +19,7 @@ const TIMEOUT: Duration = Duration::from_secs(4);
 const RELAY_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub fn has_key() -> bool {
-    crate::claude::ready()
+    crate::secrets::present("google-api-key") || crate::claude::ready()
 }
 
 pub async fn clean(raw: &str, style: Style, app: Option<&str>, words: &[String]) -> String {
@@ -27,6 +27,36 @@ pub async fn clean(raw: &str, style: Style, app: Option<&str>, words: &[String])
         return raw.to_string();
     }
     let user = format!("<dictation>\n{raw}\n</dictation>");
+    if crate::secrets::present("google-api-key") {
+        if let Some(key) = crate::secrets::get("google-api-key") {
+            if let Ok(endpoint) = reqwest::Url::parse("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions") {
+                let body = serde_json::json!({
+                    "model": "gemini-2.0-flash",
+                    "messages": [
+                        { "role": "system", "content": system(style, app, words) },
+                        { "role": "user", "content": &user }
+                    ],
+                    "max_tokens": 2048
+                });
+                if let Ok(client) = crate::net::client(&endpoint, TIMEOUT) {
+                    if let Ok(resp) = client.post(endpoint).bearer_auth(&key).json(&body).send().await {
+                        if resp.status().is_success() {
+                            if let Ok(bytes) = crate::net::read_capped(resp, crate::net::MAX_BODY).await {
+                                if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                                    if let Some(content) = json.pointer("/choices/0/message/content").and_then(|v| v.as_str()) {
+                                        let cleaned = content.replace("<dictation>", "").replace("</dictation>", "").trim().to_string();
+                                        if plausible(&cleaned, raw) {
+                                            return cleaned;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     let timeout = if crate::claude::uses_relay() { RELAY_TIMEOUT } else { TIMEOUT };
     match crate::claude::complete(MODEL, &system(style, app, words), &user, 2048, timeout).await {
         Ok(reply) => {

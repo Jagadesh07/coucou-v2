@@ -5,7 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { DEFAULT_SETTINGS, type Settings } from "./state";
+import { DEFAULT_SETTINGS, defaultUserName, type Settings } from "./state";
 import type { RecapHistory, RecapPrefs } from "../recap/summary";
 import type { SpotifyState } from "./spotify";
 import type { UpdateStatus } from "./update";
@@ -213,6 +213,9 @@ export const Bridge = {
         const raw = localStorage.getItem("coucou_settings");
         if (raw) storedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
       } catch {}
+      if (!storedSettings.userName || storedSettings.userName === "Madhan") {
+        storedSettings.userName = defaultUserName();
+      }
       return {
         settings: storedSettings,
         screen: { x: 0, y: 0, width: window.innerWidth || 1920, height: window.innerHeight || 1080, scale: window.devicePixelRatio || 1 },

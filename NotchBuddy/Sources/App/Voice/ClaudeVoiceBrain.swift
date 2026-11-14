@@ -22,9 +22,9 @@ final class ClaudeVoiceBrain {
         let failed: Bool      // nothing usable came back
     }
 
-    /// Claude is Coucou's brain whenever an Anthropic key is saved (Settings → Chat).
+    /// Coucou's brain whenever an API key is saved (Settings → Chat).
     static var isActive: Bool {
-        !(ClaudeService.shared.apiKey ?? "").isEmpty
+        !(KeychainStore.shared.get("google-api-key") ?? "").isEmpty || !(ClaudeService.shared.apiKey ?? "").isEmpty
     }
 
     private var messages: [[String: Any]] = []

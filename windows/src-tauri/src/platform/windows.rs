@@ -170,10 +170,17 @@ pub fn cli_candidates(name: &str) -> Vec<PathBuf> {
     if let Some(local) = var("LOCALAPPDATA") {
         out.push(local.join("Volta").join("bin").join(format!("{name}.exe")));
         out.push(local.join("pnpm").join(format!("{name}.cmd")));
+        out.push(local.join("agy").join("bin").join(format!("{name}.exe")));
+        out.push(local.join("Programs").join("Antigravity").join("bin").join(format!("{name}.exe")));
     }
     if let Some(home) = var("USERPROFILE") {
         out.push(home.join(".bun").join("bin").join(format!("{name}.exe")));
         out.push(home.join(".local").join("bin").join(format!("{name}.exe")));
+        out.push(home.join(".gemini").join("bin").join(format!("{name}.exe")));
+        out.push(home.join(".gemini").join("bin").join(format!("{name}.cmd")));
+        out.push(home.join(".gemini").join("bin").join(format!("{name}.bat")));
+        out.push(home.join(".gemini").join("antigravity").join("bin").join(format!("{name}.exe")));
+        out.push(home.join(".gemini").join("antigravity").join("bin").join(format!("{name}.bat")));
     }
     out.retain(|p| p.is_file());
     out

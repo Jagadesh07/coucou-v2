@@ -120,6 +120,14 @@ pub struct Settings {
     /// (agy_approvals.rs). Off by default; owned by the Rust side like `phone_link`, so
     /// what a webview sends back is ignored. The Mac's key is the same.
     pub agy_approvals_enabled: bool,
+    /// The user's name shown at the top of the island.
+    pub user_name: Option<String>,
+    /// Font style for the top user name: "bricolage", "inter", "mono", "system".
+    pub user_font: Option<String>,
+    /// Show Windows & WhatsApp notifications on the island.
+    pub windows_notifications: Option<bool>,
+    /// Expand the island automatically when a notification arrives.
+    pub expand_on_notification: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -140,11 +148,13 @@ pub struct DesktopSpot {
 }
 
 fn default_model() -> String {
-    crate::claude::DEFAULT_MODEL.to_string()
+    "gemini-2.0-flash".to_string()
 }
 
 impl Default for Settings {
     fn default() -> Self {
+        let mut chat_models = BTreeMap::new();
+        chat_models.insert("google".into(), "gemini-2.0-flash".into());
         Self {
             sound_enabled: true,
             sound_volume: 0.12,
@@ -167,8 +177,8 @@ impl Default for Settings {
             show_plan_in_compact_island: false,
             plan_relay_installed: false,
             show_codex_plan_in_notch: false,
-            chat_provider: crate::chat::ANTHROPIC.into(),
-            chat_models: BTreeMap::new(),
+            chat_provider: crate::chat::GOOGLE.into(),
+            chat_models,
             chat_subscriptions: BTreeMap::new(),
             ollama_url: String::new(),
             lmstudio_url: String::new(),
@@ -192,6 +202,10 @@ impl Default for Settings {
             show_clock: false,
             closed_island: "mochi".into(),
             agy_approvals_enabled: false,
+            user_name: std::env::var("USERNAME").ok(),
+            user_font: None,
+            windows_notifications: Some(true),
+            expand_on_notification: Some(true),
         }
     }
 }

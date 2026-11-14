@@ -196,6 +196,7 @@ export function danceTransform(seconds: number, level: number, R: number) {
 
 export class BotEngine {
   isMini = false;
+  puppyEars = false;
   /** Solid body colour for mini bots / integration pills (null = Mochi gradient). */
   bodyColor: RGB | null = null;
   /**
@@ -567,7 +568,7 @@ export class BotEngine {
       this.tweens.size > 0 ||
       this.particles.length > 0 ||
       this.cfg.bounces || this.cfg.scans || this.cfg.breathes || this.cfg.zz || this.cfg.sweat ||
-      this.isMini ||
+      this.isMini || this.puppyEars ||
       this.isDancing || this.dancingLevel > 0.001 ||
       Math.abs(this.tgYaw - this.yaw) > 0.002 ||
       Math.abs(this.tgPitch - this.pitch) > 0.002 ||
@@ -822,6 +823,10 @@ export class BotEngine {
     const outfitState = { presence: this.outfitPresence, morph: this.morph };
     if (head) drawOutfitBehind(x, this.outfit, head, outfitState);
 
+    if (this.isMini || this.puppyEars) {
+      this.drawPuppyEars(x, R, rx, ry);
+    }
+
     const body = this.bodyPath(rx, ry, R);
     this.drawBody(x, body, R, rx, ry);
 
@@ -935,6 +940,111 @@ export class BotEngine {
     x.fillStyle = hl;
     x.fill(body);
     x.restore();
+  }
+
+  private drawPuppyEars(x: CanvasRenderingContext2D, R: number, rx: number, ry: number) {
+    const t = now();
+    const bc = this.bodyColor;
+
+    const earRGB: RGB = bc
+      ? [Math.max(0, bc[0] * 0.90), Math.max(0, bc[1] * 0.90), Math.max(0, bc[2] * 0.90)]
+      : BASE_TOP;
+    const earStrokeRGB: RGB = bc
+      ? [Math.max(0, bc[0] * 0.72), Math.max(0, bc[1] * 0.72), Math.max(0, bc[2] * 0.72)]
+      : [0.65, 0.67, 0.72];
+
+    for (const sd of [-1, 1]) {
+      const rootX = sd * rx * 0.52;
+      const rootY = -ry * 0.62;
+
+      // Subtle floppy ear sway from breathing, head turns, and momentum
+      const sway = Math.sin(t * 3.0 + (sd > 0 ? 0.8 : 0)) * 0.07 - this.yaw * 0.12 * sd + this.physDx * 0.14 * sd;
+
+      x.save();
+      x.translate(rootX, rootY);
+      x.rotate(sway);
+      x.translate(-rootX, -rootY);
+
+      // Outer ear path
+      x.beginPath();
+      x.moveTo(sd * rx * 0.42, -ry * 0.58);
+      // Top fold arching up and outwards
+      x.bezierCurveTo(
+        sd * rx * 0.52, -ry * 1.06,
+        sd * rx * 0.88, -ry * 1.08,
+        sd * rx * 1.02, -ry * 0.76,
+      );
+      // Floppy droop down along the side
+      x.bezierCurveTo(
+        sd * rx * 1.30, -ry * 0.30,
+        sd * rx * 1.28, ry * 0.25,
+        sd * rx * 1.15, ry * 0.55,
+      );
+      // Rounded bottom ear lobe
+      x.bezierCurveTo(
+        sd * rx * 1.02, ry * 0.68,
+        sd * rx * 0.80, ry * 0.65,
+        sd * rx * 0.72, ry * 0.42,
+      );
+      // Inner contour back to base anchor
+      x.bezierCurveTo(
+        sd * rx * 0.62, ry * 0.15,
+        sd * rx * 0.52, -ry * 0.20,
+        sd * rx * 0.48, -ry * 0.45,
+      );
+      x.closePath();
+
+      // Outer ear fill & stroke
+      if (bc) {
+        x.fillStyle = rgba(earRGB, 1);
+        x.fill();
+        x.strokeStyle = rgba(earStrokeRGB, 0.55);
+        x.lineWidth = Math.max(0.7, R * 0.038);
+        x.stroke();
+      } else {
+        const eg = x.createLinearGradient(sd * rx * 0.5, -ry * 0.9, sd * rx * 1.2, ry * 0.6);
+        eg.addColorStop(0, rgba(BASE_TOP));
+        eg.addColorStop(1, rgba(BASE_BOTTOM));
+        x.fillStyle = eg;
+        x.fill();
+        x.strokeStyle = rgba(earStrokeRGB, 0.45);
+        x.lineWidth = Math.max(0.7, R * 0.038);
+        x.stroke();
+      }
+
+      // Inner ear flap (cute soft pink)
+      x.beginPath();
+      x.moveTo(sd * rx * 0.65, -ry * 0.55);
+      x.bezierCurveTo(
+        sd * rx * 0.76, -ry * 0.85,
+        sd * rx * 0.95, -ry * 0.75,
+        sd * rx * 1.05, -ry * 0.45,
+      );
+      x.bezierCurveTo(
+        sd * rx * 1.18, -ry * 0.10,
+        sd * rx * 1.16, ry * 0.20,
+        sd * rx * 1.05, ry * 0.45,
+      );
+      x.bezierCurveTo(
+        sd * rx * 0.95, ry * 0.54,
+        sd * rx * 0.82, ry * 0.50,
+        sd * rx * 0.76, ry * 0.35,
+      );
+      x.bezierCurveTo(
+        sd * rx * 0.68, ry * 0.12,
+        sd * rx * 0.60, -ry * 0.20,
+        sd * rx * 0.65, -ry * 0.55,
+      );
+      x.closePath();
+
+      const pinkG = x.createLinearGradient(sd * rx * 0.7, -ry * 0.5, sd * rx * 1.05, ry * 0.4);
+      pinkG.addColorStop(0, "rgba(255, 185, 205, 0.88)");
+      pinkG.addColorStop(1, "rgba(245, 150, 180, 0.80)");
+      x.fillStyle = pinkG;
+      x.fill();
+
+      x.restore();
+    }
   }
 
   private drawEyes(x: CanvasRenderingContext2D, body: Path2D, R: number, rx: number, ry: number) {

@@ -26,6 +26,11 @@ import { dominantPct, planColor } from "../core/plan";
 import { language, t, tl } from "../i18n/i18n";
 import { claudeCompactPillVisible, closePlanCard, openPlanColor, planCardOpen } from "../views/usage";
 import { buildHeader, buildViews, type ViewActions, type ViewHost } from "../views/views";
+import { buildMusicSynth } from "../views/synth";
+import { buildNotificationBanner, type NotificationBanner } from "../views/notifications";
+import { type WindowsNotification } from "../core/notifications";
+import { WHATSAPP_ID } from "../core/whatsapp";
+import { MAIL_ID } from "../core/mail";
 import { h } from "../views/dom";
 import { buildSessionDropList, type SessionDropList } from "../views/session-drop";
 import { DROP_TEXT_RIGHT_WITH_LIST, dropTargetAt, dropTargets } from "../core/launch";
@@ -72,6 +77,7 @@ export class Island {
   private greetingCanvas!: HTMLCanvasElement;
   private miniGrid!: HTMLElement;
   private clockEl!: HTMLElement;
+  private synthEl!: HTMLElement;
   private clockTimer?: number;
   /** The closed island's one line (core/closed.ts), and what it last showed. */
   private closedEl!: HTMLElement;
@@ -98,6 +104,8 @@ export class Island {
   private uploadCanvas!: UploadCanvas;
   /** The sessions listed on the drop card while a file is over it. */
   private sessionDrop!: SessionDropList;
+  private notifBanner!: NotificationBanner;
+  private openedByNotification = false;
 
   private width = new Tracked(NOTCH_W);
   private height = new Tracked(0);
@@ -337,6 +345,13 @@ export class Island {
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
     this.miniGrid = h("div", { id: "mini-grid" });
     this.clockEl = h("div", { id: "island-clock" });
+    this.synthEl = buildMusicSynth("island-synth");
+    this.synthEl.onclick = (e) => {
+      e.stopPropagation();
+      this.setView("overview");
+      State.setFocus(SPOTIFY_ID);
+      this.setMode("expanded");
+    };
     this.countdown = h("div", { id: "countdown" });
     this.compactPlanDot = h("i", { class: "compact-plan-dot" });
     this.compactPlanLabel = h("span", { class: "compact-plan-label" });
@@ -378,12 +393,39 @@ export class Island {
     this.sessionDrop = buildSessionDropList();
     this.uploadCanvas.el.append(this.sessionDrop.el);
 
+    this.notifBanner = buildNotificationBanner({
+      onOpen: (notif) => {
+        this.openedByNotification = false;
+        if (notif.appId === WHATSAPP_ID || notif.app.toLowerCase() === "whatsapp") {
+          this.setView("overview");
+          State.setFocus(WHATSAPP_ID);
+        } else if (notif.appId === MAIL_ID || notif.app.toLowerCase().includes("mail") || notif.app.toLowerCase().includes("outlook")) {
+          this.setView("overview");
+          State.setFocus(MAIL_ID);
+        } else if (notif.appId === SPOTIFY_ID || notif.app.toLowerCase().includes("spotify")) {
+          this.setView("overview");
+          State.setFocus(SPOTIFY_ID);
+        } else {
+          this.setView("overview");
+        }
+      },
+      onDismiss: (_notif, collapseIfOpened) => {
+        if (collapseIfOpened && this.openedByNotification) {
+          this.openedByNotification = false;
+          if (!State.isPinned && !this.wasInIsland) {
+            this.setMode("compact");
+          }
+        }
+      },
+    });
+
     this.clipEl = h(
       "div",
       { id: "island-clip" },
       this.greetingCanvas,
       this.uploadCanvas.el,
       this.contentEl,
+      this.notifBanner.el,
     );
     this.islandEl = h(
       "div",
@@ -394,6 +436,7 @@ export class Island {
       this.miniGrid,
       this.compactPlan,
       this.clockEl,
+      this.synthEl,
       this.closedEl,
       this.countdown,
     );
@@ -454,6 +497,8 @@ export class Island {
     const prev = State.mode;
     if (mode === prev) return;
     State.mode = mode;
+    this.islandEl.classList.toggle("open", mode === "expanded");
+    this.islandEl.dataset.mode = mode;
     if (mode === "expanded") Sound.play("open");
     if (prev === "expanded") {
       Sound.play("close");
@@ -573,6 +618,39 @@ export class Island {
     this.silentReveal = true;
     this.fsm.reveal();
     this.silentReveal = false;
+  }
+
+  /**
+   * Windows notification arrived: expand the island (if configured)
+   * and present the notification banner.
+   */
+  showNotification(notif: WindowsNotification) {
+    if (State.paused || State.settings.windowsNotifications === false) return;
+    const shouldExpand = State.settings.expandOnNotification !== false;
+    if (shouldExpand) {
+      if (State.mode !== "expanded") {
+        this.openedByNotification = true;
+        this.fsm.forceHome();
+        this.setMode("expanded");
+      }
+    } else {
+      this.reveal();
+    }
+    Sound.play("pop");
+    this.engine.triggerEmote("happy");
+    this.ensureRunning();
+    this.notifBanner.show(notif);
+    State.notify();
+  }
+
+  /** Explicit expand and show notification. */
+  expandNotification(notif: WindowsNotification) {
+    this.showNotification(notif);
+  }
+
+  /** Dismisses the notification banner. */
+  dismissNotification(collapseIfOpened = true) {
+    this.notifBanner.dismiss(collapseIfOpened);
   }
 
   /** Right-click on Mochi: wardrobe open ↔ back to the usual view. */
@@ -892,6 +970,10 @@ export class Island {
     this.islandEl.style.height = `${hh}px`;
     this.islandEl.style.borderRadius = `0 0 ${r}px ${r}px`;
     this.islandEl.style.transform = `translateX(-50%)`;
+    this.islandEl.classList.toggle("open", State.mode === "expanded");
+    const earSize = Math.max(0, Math.min(14, Math.round(hh)));
+    this.islandEl.style.setProperty("--ear-size", `${earSize}px`);
+    this.islandEl.style.setProperty("--ear-opacity", hh > 2 ? "1" : "0");
     // These follow the island as it resizes, so they belong here rather than in
     // the state-driven DOM sync.
     this.miniGrid.style.left = `${w - 40 - 14.5}px`;
@@ -1475,6 +1557,8 @@ export class Island {
 
   private syncDom() {
     const expanded = State.mode === "expanded";
+    this.islandEl.classList.toggle("open", expanded);
+    this.islandEl.dataset.mode = State.mode;
     const greetingActive = expanded && State.view === "greeting";
 
     const live = expanded && !greetingActive;
@@ -1492,6 +1576,7 @@ export class Island {
     if (State.wardrobePreview && !(expanded && State.view === "wardrobe")) State.wardrobePreview = null;
 
     this.header.sync();
+    this.notifBanner?.sync();
     for (const [name, view] of this.views) {
       const on = name === State.view;
       view.el.classList.toggle("on", on);
@@ -1543,6 +1628,12 @@ export class Island {
 
     this.updateClock();
 
+    const isMusic = State.spotifyPlaying || (Spotify.state.playing && !!Spotify.state.track);
+    const showSynth = State.mode === "compact" && isMusic;
+    this.synthEl.classList.toggle("on", showSynth);
+    this.synthEl.classList.toggle("playing", isMusic);
+    this.islandEl.classList.toggle("music-playing", isMusic && State.mode === "compact");
+
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
   }
@@ -1550,7 +1641,8 @@ export class Island {
   /** The clock sits in the middle of the compact island, where the notch is on a Mac. */
   private updateClock() {
     this.updateClosed();
-    const on = State.mode === "compact" && State.settings.showClock;
+    const isMusic = State.spotifyPlaying || (Spotify.state.playing && !!Spotify.state.track);
+    const on = State.mode === "compact" && State.settings.showClock && !isMusic;
     this.clockEl.style.opacity = on ? "1" : "0";
     if (!on) return;
     const now = new Date();

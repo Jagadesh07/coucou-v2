@@ -88,6 +88,9 @@ fn boot(app: AppHandle, shared: State<Shared>) -> BootInfo {
     let hooks_status = hooks::status();
     settings.hooks_installed = hooks_status.installed;
     settings.plan_relay_installed = hooks_status.plan_relay_installed;
+    if settings.user_name.is_none() {
+        settings.user_name = platform::user_full_name().or_else(|| std::env::var("USERNAME").ok());
+    }
     let screen = island::screen_info(&app, &settings.screen);
     BootInfo {
         settings,

@@ -49,6 +49,7 @@ final class CLILocator: @unchecked Sendable {
         let home = fm.homeDirectoryForCurrentUser.path
         var dirs = [
             "\(home)/.local/bin", "\(home)/.claude/local", "/opt/homebrew/bin", "/usr/local/bin",
+            "\(home)/.gemini/bin",
             "\(home)/.npm-global/bin", "\(home)/.npm/bin", "\(home)/.volta/bin", "\(home)/.bun/bin",
             "\(home)/Library/pnpm", "\(home)/.local/share/pnpm", "\(home)/.yarn/bin",
             "\(home)/.asdf/shims", "\(home)/.local/share/mise/shims", "\(home)/.cursor/bin",

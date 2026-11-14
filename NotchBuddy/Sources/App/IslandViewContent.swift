@@ -390,7 +390,7 @@ struct EmptyStateView: View {
                         .foregroundColor(Color(hex: "#9398A1"))
                 }
                 Spacer()
-                PrimaryButton("Ask Claude") {
+                PrimaryButton(state.chatProvider == .google ? "Ask Gemini" : (state.chatProvider == .anthropic ? "Ask Claude" : "Ask Assistant")) {
                     state.view = .prompt
                 }
             }

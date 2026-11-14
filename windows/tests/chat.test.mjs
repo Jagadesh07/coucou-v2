@@ -40,10 +40,10 @@ const chips = () => view.el.find(".picker-chip").map((c) => c.textContent);
 const models = () => view.el.find(".picker-model").map((m) => m.textContent);
 
 test("the model button shows the active provider's model", () => {
-  assert.equal($(".model-name").textContent, "claude-opus-5");
-  State.settings = { ...State.settings, chatProvider: "google" };
-  view.sync();
   assert.equal($(".model-name").textContent, "gemini-2.0-flash");
+  State.settings = { ...State.settings, chatProvider: "anthropic" };
+  view.sync();
+  assert.equal($(".model-name").textContent, "claude-opus-5");
   State.settings = { ...State.settings, chatProvider: "ollama" };
   view.sync();
   assert.equal($(".model-name").textContent, "Choose a model");
@@ -51,59 +51,46 @@ test("the model button shows the active provider's model", () => {
 
 test("a provider without a key is never asked for its models", async () => {
   answers.secret_present = false;
-  answers.claude_ready = false;
+  answers.key_ready = false;
   $(".model-btn").fire("click");
   await flush();
   assert.ok($(".chat-body").classList.contains("picking"));
-  assert.deepEqual(chips(), ["Anthropic", "Google", "OpenAI", "OpenRouter"]);
-  assert.equal(sent("claude_ready").length, 1);
+  assert.deepEqual(chips(), ["Google", "Anthropic", "OpenAI", "OpenRouter"]);
   assert.deepEqual(sent("chat_models"), []);
   assert.match($(".picker-status").textContent, /No API key/);
 });
 
-test("without a key, Claude Code standing in still lists Claude's models", async () => {
-  answers.secret_present = false;
-  answers.claude_ready = true;
-  answers.chat_models = [{ id: "claude-opus-5", label: "Claude Opus 5" }];
-  $(".model-btn").fire("click");
-  await flush();
-  assert.deepEqual(sent("secret_present"), []);
-  assert.deepEqual(sent("chat_models"), [{ provider: "anthropic" }]);
-  assert.deepEqual(models(), ["Claude Opus 5"]);
-});
-
 test("with a key, the models are listed and picking one saves it", async () => {
   answers.secret_present = true;
-  answers.claude_ready = true;
+  answers.key_ready = true;
   answers.chat_models = [
-    { id: "claude-opus-5", label: "Claude Opus 5" },
-    { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   ];
   $(".model-btn").fire("click");
   await flush();
-  assert.deepEqual(sent("chat_models"), [{ provider: "anthropic" }]);
-  assert.deepEqual(models(), ["Claude Opus 5", "Claude Sonnet 5"]);
+  assert.deepEqual(sent("chat_models"), [{ provider: "google" }]);
+  assert.deepEqual(models(), ["Gemini 2.0 Flash", "Gemini 2.5 Flash"]);
   view.el.find(".picker-model")[1].fire("click");
-  assert.equal(State.settings.model, "claude-sonnet-5");
-  assert.equal(sent("save_settings").at(-1).settings.model, "claude-sonnet-5");
+  assert.equal(State.settings.chatModels.google, "gemini-2.5-flash");
+  assert.equal(sent("save_settings").at(-1).settings.chatModels.google, "gemini-2.5-flash");
   assert.ok(!$(".chat-body").classList.contains("picking"));
-  assert.equal($(".model-name").textContent, "claude-sonnet-5");
+  assert.equal($(".model-name").textContent, "gemini-2.5-flash");
 });
 
 test("switching provider saves it and asks the new provider only", async () => {
-  answers.secret_present = (args) => args.key === "google-api-key";
-  answers.chat_models = (args) => (args.provider === "google" ? [{ id: "gemini-2.5-flash", label: "gemini-2.5-flash" }] : []);
+  answers.secret_present = (args) => args.key === "anthropic-api-key";
+  answers.claude_ready = true;
+  answers.chat_models = (args) => (args.provider === "anthropic" ? [{ id: "claude-opus-5", label: "claude-opus-5" }] : []);
   $(".model-btn").fire("click");
   await flush();
   assert.deepEqual(sent("chat_models"), []);
   view.el.find(".picker-chip")[1].fire("click");
   await flush();
-  assert.equal(State.settings.chatProvider, "google");
-  assert.deepEqual(sent("chat_models"), [{ provider: "google" }]);
-  // The saved model was not offered: the flash one is kept instead, and saved.
-  assert.equal(State.settings.chatModels.google, "gemini-2.5-flash");
-  assert.equal(sent("save_settings").at(-1).settings.chatModels.google, "gemini-2.5-flash");
-  assert.deepEqual(models(), ["gemini-2.5-flash"]);
+  assert.equal(State.settings.chatProvider, "anthropic");
+  assert.deepEqual(sent("chat_models"), [{ provider: "anthropic" }]);
+  assert.equal(State.settings.model, "claude-opus-5");
+  assert.deepEqual(models(), ["claude-opus-5"]);
 });
 
 test("a local answer streams into one reply, then the finished text replaces it", async () => {

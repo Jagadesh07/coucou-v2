@@ -1341,7 +1341,7 @@ struct SettingsView: View {
                         ollamaURL = ""
                         state.fetchedProviderModels[.ollama] = nil
                         state.providerModelFetchError[.ollama] = nil
-                        if state.chatProvider == .ollama { state.chatProvider = .anthropic }
+                        if state.chatProvider == .ollama { state.chatProvider = .google }
                         statusMessage = String(localized: "status.local.ollama-disconnected")
                     }
                     .buttonStyle(.bordered)
@@ -1376,7 +1376,7 @@ struct SettingsView: View {
                         lmstudioURL = ""
                         state.fetchedProviderModels[.lmstudio] = nil
                         state.providerModelFetchError[.lmstudio] = nil
-                        if state.chatProvider == .lmstudio { state.chatProvider = .anthropic }
+                        if state.chatProvider == .lmstudio { state.chatProvider = .google }
                         statusMessage = String(localized: "status.local.lmstudio-disconnected")
                     }
                     .buttonStyle(.bordered)

@@ -409,7 +409,7 @@ fn open_claude_with(
 pub fn cli_candidates(name: &str) -> Vec<PathBuf> {
     let home = home_dir();
     let mut out: Vec<PathBuf> = find_on_path(name).into_iter().collect();
-    for dir in [".local/bin", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm"] {
+    for dir in [".local/bin", ".npm-global/bin", ".volta/bin", ".bun/bin", ".local/share/pnpm", ".gemini/bin"] {
         out.push(home.join(dir).join(name));
     }
     out.push(PathBuf::from("/usr/local/bin").join(name));

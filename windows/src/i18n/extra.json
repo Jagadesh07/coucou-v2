@@ -391,20 +391,20 @@
       "ko": "채팅 제공업체",
       "ja": "チャットのプロバイダ"
     },
-    "Chat with Google AI, OpenAI or OpenRouter instead of Claude: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain. These providers get no web search and no tools: they can answer, never act on this computer.": {
-      "zh-Hans": "用 Google AI、OpenAI 或 OpenRouter 代替 Claude 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。这些服务商没有网页搜索和工具：它们只能回答，绝不会在这台电脑上执行操作。",
-      "hi": "Claude की जगह Google AI, OpenAI या OpenRouter से चैट करें: यहाँ एक कुंजी जोड़ें, फिर प्रदाता और मॉडल बदलने के लिए चैट बॉक्स के ऊपर मॉडल के नाम पर क्लिक करें। कुंजियाँ सिस्टम कीचेन में रहती हैं। इन प्रदाताओं को न वेब सर्च मिलता है न टूल: वे जवाब दे सकते हैं, इस कंप्यूटर पर कभी कुछ नहीं करते।",
-      "es": "Chatea con Google AI, OpenAI u OpenRouter en lugar de Claude: añade una clave aquí y luego haz clic en el nombre del modelo encima del cuadro de chat para cambiar de proveedor y modelo. Las claves se quedan en el llavero del sistema. Estos proveedores no tienen búsqueda web ni herramientas: pueden responder, nunca actuar en este equipo.",
-      "ar": "دردش مع Google AI أو OpenAI أو OpenRouter بدلًا من Claude: أضف مفتاحًا هنا، ثم انقر على اسم النموذج فوق مربع الدردشة لتبديل المزوّد والنموذج. تبقى المفاتيح في سلسلة مفاتيح النظام. لا يحصل هؤلاء المزوّدون على بحث الويب ولا على الأدوات: يمكنهم الإجابة، ولا يتصرفون أبدًا على هذا الحاسوب.",
-      "fr": "Discute avec Google AI, OpenAI ou OpenRouter à la place de Claude : ajoute une clé ici, puis clique sur le nom du modèle au-dessus de la zone de chat pour changer de fournisseur et de modèle. Les clés restent dans le trousseau du système. Ces fournisseurs n'ont ni recherche web ni outils : ils peuvent répondre, jamais agir sur cet ordinateur.",
-      "bn": "Claude-এর বদলে Google AI, OpenAI বা OpenRouter-এর সঙ্গে চ্যাট করুন: এখানে একটি কী যোগ করুন, তারপর প্রদানকারী ও মডেল বদলাতে চ্যাট বক্সের উপরে মডেলের নামে ক্লিক করুন। কী সিস্টেম কীচেইনে থাকে। এই প্রদানকারীরা ওয়েব সার্চ বা টুল পায় না: তারা উত্তর দিতে পারে, এই কম্পিউটারে কখনো কিছু করে না।",
-      "pt-BR": "Converse com Google AI, OpenAI ou OpenRouter em vez do Claude: adicione uma chave aqui e clique no nome do modelo acima da caixa de chat para trocar de provedor e de modelo. As chaves ficam no chaveiro do sistema. Esses provedores não têm busca na web nem ferramentas: podem responder, nunca agir neste computador.",
-      "ru": "Общайтесь с Google AI, OpenAI или OpenRouter вместо Claude: добавьте ключ здесь, затем нажмите на название модели над полем чата, чтобы сменить провайдера и модель. Ключи хранятся в системной связке ключей. У этих провайдеров нет веб-поиска и инструментов: они могут отвечать, но никогда не действуют на этом компьютере.",
-      "id": "Mengobrol dengan Google AI, OpenAI, atau OpenRouter sebagai ganti Claude: tambahkan kunci di sini, lalu klik nama model di atas kotak obrolan untuk mengganti penyedia dan model. Kunci tetap di keychain sistem. Penyedia ini tidak punya pencarian web maupun alat: mereka bisa menjawab, tidak pernah bertindak di komputer ini.",
-      "de": "Chatte mit Google AI, OpenAI oder OpenRouter statt mit Claude: Hinterlege hier einen Schlüssel und klicke dann auf den Modellnamen über dem Chatfeld, um Anbieter und Modell zu wechseln. Schlüssel bleiben im Systemschlüsselbund. Diese Anbieter erhalten weder Websuche noch Werkzeuge: Sie können antworten, aber auf diesem Computer keine Aktionen ausführen.",
-      "tr": "Claude yerine Google AI, OpenAI veya OpenRouter ile sohbet et: buraya bir anahtar ekle, ardından sağlayıcı ve model değiştirmek için sohbet kutusunun üstündeki model adına tıkla. Anahtarlar sistemin anahtar zincirinde kalır. Bu sağlayıcılarda web araması ve araçlar yoktur: yanıt verebilirler, bu bilgisayarda işlem yapamazlar.",
-      "ko": "Claude 대신 Google AI, OpenAI, OpenRouter와 채팅해 보세요. 여기에 키를 넣고, 채팅창 위의 모델 이름을 눌러 제공업체와 모델을 바꾸면 돼요. 키는 시스템 키 저장소에 보관돼요. 이 제공업체들은 웹 검색도 도구도 못 써요. 답은 하지만 이 컴퓨터에서 직접 뭔가를 하진 못해요.",
-      "ja": "Claude の代わりに Google AI、OpenAI、OpenRouter とチャットできます。ここでキーを追加し、チャット欄の上のモデル名をクリックしてプロバイダとモデルを切り替えてください。キーはシステムのキーチェーンに保存されます。これらのプロバイダにはウェブ検索もツールもありません。答えることはできても、このパソコンで操作することはありません。"
+    "Chat with Anthropic (Claude), OpenAI or OpenRouter instead of Google Gemini: add a key here, then click the model name above the chat box to switch provider and model. Keys stay in the system keychain.": {
+      "zh-Hans": "用 Anthropic (Claude)、OpenAI 或 OpenRouter 代替 Google Gemini 聊天：在这里添加密钥，然后点击聊天框上方的模型名称来切换服务商和模型。密钥保存在系统钥匙串中。",
+      "hi": "Google Gemini की जगह Anthropic (Claude), OpenAI या OpenRouter से चैट करें: यहाँ एक कुंजी जोड़ें, फिर प्रदाता और मॉडल बदलने के लिए चैट बॉक्स के ऊपर मॉडल के नाम पर क्लिक करें। कुंजियाँ सिस्टम कीचेन में रहती हैं।",
+      "es": "Chatea con Anthropic (Claude), OpenAI u OpenRouter en lugar de Google Gemini: añade una clave aquí y luego haz clic en el nombre del modelo encima del cuadro de chat para cambiar de proveedor y modelo. Las claves se quedan en el llavero del sistema.",
+      "ar": "دردش مع Anthropic (Claude) أو OpenAI أو OpenRouter بدلًا من Google Gemini: أضف مفتاحًا هنا، ثم انقر على اسم النموذج فوق مربع الدردشة لتبديل المزوّد والنموذج. تبقى المفاتيح في سلسلة مفاتيح النظام.",
+      "fr": "Discute avec Anthropic (Claude), OpenAI ou OpenRouter à la place de Google Gemini : ajoute une clé ici, puis clique sur le nom du modèle au-dessus de la zone de chat pour changer de fournisseur et de modèle. Les clés restent dans le trousseau du système.",
+      "bn": "Google Gemini-এর বদলে Anthropic (Claude), OpenAI বা OpenRouter-এর সঙ্গে চ্যাট করুন: এখানে একটি কী যোগ করুন, তারপর প্রদানকারী ও মডেল বদলাতে চ্যাট বক্সের উপরে মডেলের নামে ক্লিক করুন। কী সিস্টেম কীচেইনে থাকে।",
+      "pt-BR": "Converse com Anthropic (Claude), OpenAI ou OpenRouter em vez do Google Gemini: adicione uma chave aqui e clique no nome do modelo acima da caixa de chat para trocar de provedor e de modelo. As chaves ficam no chaveiro do sistema.",
+      "ru": "Общайтесь с Anthropic (Claude), OpenAI или OpenRouter вместо Google Gemini: добавьте ключ здесь, затем нажмите на название модели над полем чата, чтобы сменить провайдера и модель. Ключи хранятся в системной связке ключей.",
+      "id": "Mengobrol dengan Anthropic (Claude), OpenAI, atau OpenRouter sebagai ganti Google Gemini: tambahkan kunci di sini, lalu klik nama model di atas kotak obrolan untuk mengganti penyedia dan model. Kunci tetap di keychain sistem.",
+      "de": "Chatte mit Anthropic (Claude), OpenAI oder OpenRouter statt mit Google Gemini: Hinterlege hier einen Schlüssel und klicke dann auf den Modellnamen über dem Chatfeld, um Anbieter und Modell zu wechseln. Schlüssel bleiben im Systemschlüsselbund.",
+      "tr": "Google Gemini yerine Anthropic (Claude), OpenAI veya OpenRouter ile sohbet et: buraya bir anahtar ekle, ardından sağlayıcı ve model değiştirmek için sohbet kutusunun üstündeki model adına tıkla. Anahtarlar sistemin anahtar zincirinde kalır.",
+      "ko": "Google Gemini 대신 Anthropic (Claude), OpenAI, OpenRouter와 채팅해 보세요. 여기에 키를 넣고, 채팅창 위의 모델 이름을 눌러 제공업체와 모델을 바꾸면 돼요. 키는 시스템 키 저장소에 보관돼요.",
+      "ja": "Google Gemini の代わりに Anthropic (Claude)、OpenAI、OpenRouter とチャットできます。ここでキーを追加し、チャット欄の上のモデル名をクリックしてプロバイダとモデルを切り替えてください。キーはシステムのキーチェーンに保存されます。"
     },
     "Chat with a model you run yourself: Ollama or LM Studio (leave the address empty for the usual one on this computer), or any server that speaks the OpenAI API, such as vLLM or llama.cpp. Once connected, pick it above the chat box.": {
       "zh-Hans": "与你自己运行的模型聊天：Ollama 或 LM Studio（地址留空即使用本机的默认地址），或任何兼容 OpenAI API 的服务器，例如 vLLM 或 llama.cpp。连接后，在聊天框上方选择它。",
@@ -7174,20 +7174,20 @@
       "ko": "{tool}이(가) 응답할 수 없었습니다.",
       "ja": "{tool} は応答できませんでした。"
     },
-    "No key: the chat can go through your Claude subscription above.": {
-      "zh-Hans": "没有密钥：聊天可以使用上方你的 Claude 订阅。",
-      "hi": "कोई कुंजी नहीं: चैट ऊपर दी गई आपकी Claude सदस्यता से चल सकती है।",
-      "es": "Sin clave: el chat puede usar tu suscripción de Claude de arriba.",
-      "ar": "لا يوجد مفتاح: يمكن للدردشة استخدام اشتراكك في Claude أعلاه.",
-      "fr": "Pas de clé : le chat peut passer par ton abonnement Claude ci-dessus.",
-      "bn": "কোনো কী নেই: চ্যাট উপরের আপনার Claude সাবস্ক্রিপশন দিয়ে চলতে পারে।",
-      "pt-BR": "Sem chave: o chat pode usar sua assinatura do Claude acima.",
-      "ru": "Нет ключа: чат может работать через вашу подписку Claude выше.",
-      "id": "Tanpa kunci: chat bisa memakai langganan Claude-mu di atas.",
-      "de": "Kein Schlüssel: Der Chat kann über dein Claude-Abo oben laufen.",
-      "tr": "Anahtar yok: sohbet yukarıdaki Claude aboneliğinizi kullanabilir.",
-      "ko": "키 없음: 채팅은 위의 Claude 구독을 사용할 수 있습니다.",
-      "ja": "キーなし: チャットは上の Claude サブスクリプションを使えます。"
+    "No key: the chat can go through your Google subscription above.": {
+      "zh-Hans": "没有密钥：聊天可以使用上方你的 Google 订阅。",
+      "hi": "कोई कुंजी नहीं: चैट ऊपर दी गई आपकी Google सदस्यता से चल सकती है।",
+      "es": "Sin clave: el chat puede usar tu suscripción de Google de arriba.",
+      "ar": "لا يوجد مفتاح: يمكن للدردشة استخدام اشتراكك في Google أعلاه.",
+      "fr": "Pas de clé : le chat peut passer par ton abonnement Google ci-dessus.",
+      "bn": "কোনো কী নেই: চ্যাট উপরের আপনার Google সাবস্ক্রিপশন দিয়ে চলতে পারে।",
+      "pt-BR": "Sem chave: o chat pode usar sua assinatura do Google acima.",
+      "ru": "Нет ключа: чат может работать через вашу подписку Google выше.",
+      "id": "Tanpa kunci: chat bisa memakai langganan Google-mu di atas.",
+      "de": "Kein Schlüssel: Der Chat kann über dein Google-Abo oben laufen.",
+      "tr": "Anahtar yok: sohbet yukarıdaki Google aboneliğinizi kullanabilir.",
+      "ko": "키 없음: 채팅은 위의 Google 구독을 사용할 수 있습니다.",
+      "ja": "キーなし: チャットは上の Google サブスクリプションを使えます。"
     },
     "Bottom-left": {
       "zh-Hans": "左下",

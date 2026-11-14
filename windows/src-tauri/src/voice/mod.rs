@@ -53,9 +53,9 @@ fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<String>>> {
 }
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-/// Whether « OK Coucou » can run: the voice model and a Claude key.
+/// Whether « OK Coucou » can run: the voice model and an assistant key (Google Gemini or Claude).
 pub fn requirements_met() -> bool {
-    speech::is_ready() && crate::secrets::present(crate::claude::KEY)
+    speech::is_ready() && (crate::secrets::present("google-api-key") || crate::secrets::present(crate::claude::KEY))
 }
 
 /// Starts or stops listening to follow the preference.

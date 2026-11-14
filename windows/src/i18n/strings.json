@@ -992,6 +992,21 @@
    "ko": "말한 그대로",
    "ja": "話したとおり"
   },
+  "Ask Assistant": {
+   "zh-Hans": "问助手",
+   "hi": "असिस्टेंट से पूछें",
+   "es": "Preguntar al asistente",
+   "ar": "اسأل المساعد",
+   "fr": "Demander à l'assistant",
+   "bn": "সহকারীকে জিজ্ঞাসা করুন",
+   "pt-BR": "Perguntar ao assistente",
+   "ru": "Спросить ассистента",
+   "id": "Tanya asisten",
+   "de": "Assistent fragen",
+   "tr": "Asistana sor",
+   "ko": "도우미에게 묻기",
+   "ja": "アシスタントに聞く"
+  },
   "Ask Claude": {
    "zh-Hans": "问 Claude",
    "hi": "Claude से पूछें",
@@ -1006,6 +1021,21 @@
    "tr": "Claude'a sor",
    "ko": "Claude에게 묻기",
    "ja": "Claude に聞く"
+  },
+  "Ask Gemini": {
+   "zh-Hans": "问 Gemini",
+   "hi": "Gemini से पूछें",
+   "es": "Preguntar a Gemini",
+   "ar": "اسأل Gemini",
+   "fr": "Demander à Gemini",
+   "bn": "Gemini-কে জিজ্ঞেস করুন",
+   "pt-BR": "Perguntar ao Gemini",
+   "ru": "Спросить Gemini",
+   "id": "Tanya Gemini",
+   "de": "Gemini fragen",
+   "tr": "Gemini'ye sor",
+   "ko": "Gemini에게 묻기",
+   "ja": "Gemini に聞く"
   },
   "Ask a question": {
    "zh-Hans": "提问",

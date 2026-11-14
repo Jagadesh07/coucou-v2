@@ -38,8 +38,8 @@ enum SubscriptionCLI: String, CaseIterable, Sendable {
     var binaries: [String] {
         switch self {
         case .claude:      ["claude"]
-        case .antigravity: ["agy"]
-        case .gemini:      ["gemini"]
+        case .antigravity: ["agy", "antigravity"]
+        case .gemini:      ["gemini", "gemini-cli"]
         case .codex:       ["codex"]
         case .cursor:      ["cursor-agent", "agent"]
         case .copilot:     ["copilot"]

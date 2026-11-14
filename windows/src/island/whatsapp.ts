@@ -7,12 +7,14 @@ import { Bridge, onEvent } from "../core/bridge";
 import { Sound } from "../core/sound";
 import { State } from "../core/state";
 import { WHATSAPP_ID, WhatsApp, type WaIslandView } from "../core/whatsapp";
+import { NotificationCenter, type WindowsNotification } from "../core/notifications";
 import type { BotEmoteName } from "../core/layout";
 
 export interface WhatsAppHost {
   /** The compact island, so the badge is seen. */
   reveal(): void;
   emote(name: BotEmoteName): void;
+  showNotification?(notif: WindowsNotification): void;
 }
 
 export type WaPillEvent = { kind: "message"; name: string } | { kind: "read" } | { kind: "reset" };
@@ -64,6 +66,26 @@ export function handlePillEvent(island: WhatsAppHost, e: WaPillEvent, now = perf
         Sound.play("pop");
       }
       island.reveal();
+
+      // Dispatch Windows Notification for the WhatsApp message
+      const convo = WhatsApp.view?.conversations?.find((c) => c.name === e.name || c.id === e.name);
+      const lastMsg = convo?.messages?.[convo.messages.length - 1];
+      const previewText = lastMsg?.text || (lastMsg?.media?.kind && lastMsg.media.kind !== "none" ? `[${lastMsg.media.kind}]` : "");
+
+      const notif = NotificationCenter.notify({
+        id: `wa-${now}`,
+        app: "WhatsApp",
+        appName: "WhatsApp",
+        appId: WHATSAPP_ID,
+        title: e.name,
+        body: previewText || `New message from ${e.name}`,
+        accentColor: "#25D366",
+        source: "whatsapp",
+      });
+
+      if (island.showNotification && State.settings.windowsNotifications !== false) {
+        island.showNotification(notif);
+      }
       if (resetTimer != null) window.clearTimeout(resetTimer);
       resetTimer = window.setTimeout(() => {
         resetTimer = null;

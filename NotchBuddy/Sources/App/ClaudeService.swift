@@ -220,12 +220,14 @@ final class ClaudeService {
         #endif
     }
 
-    /// Whether the chat can answer with Claude: an API key, or else Claude Code (GitHub build).
+    /// Whether the chat can answer: an API key, or else a subscription CLI (GitHub build).
     var canAnswer: Bool {
+        let hasGoogleKey = !(KeychainStore.shared.get("google-api-key") ?? "").isEmpty
+        let hasClaudeKey = !(apiKey ?? "").isEmpty
         #if APPSTORE
-        return !(apiKey ?? "").isEmpty
+        return hasGoogleKey || hasClaudeKey
         #else
-        return !(apiKey ?? "").isEmpty || CLILocator.shared.isInstalled(.claude)
+        return hasGoogleKey || hasClaudeKey || CLILocator.shared.isInstalled(.claude) || CLILocator.shared.isInstalled(.gemini) || CLILocator.shared.isInstalled(.antigravity)
         #endif
     }
 

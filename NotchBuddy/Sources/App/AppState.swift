@@ -127,7 +127,7 @@ final class AppState: ObservableObject {
     /// actions on them. Off at each launch.
     @Published var chatMailMode = false
 
-    @Published var chatProvider: ChatProvider = .anthropic {
+    @Published var chatProvider: ChatProvider = .google {
         didSet { UserDefaults.standard.set(chatProvider.rawValue, forKey: "chatProvider") }
     }
     @Published var googleChatModel: String = ChatProvider.google.defaultModel {
@@ -578,7 +578,7 @@ final class AppState: ObservableObject {
         pillColors = PillColors.stored
         if let v = ud.string(forKey: "claudeModel"),
            !v.trimmingCharacters(in: .whitespaces).isEmpty { claudeModel = v }
-        if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p }
+        if let v = ud.string(forKey: "chatProvider"), let p = ChatProvider(rawValue: v) { chatProvider = p } else { chatProvider = .google }
         if let v = ud.string(forKey: "googleChatModel"), !v.isEmpty { googleChatModel = v }
         if let v = ud.string(forKey: "openAIChatModel"), !v.isEmpty { openAIChatModel = v }
         if let v = ud.string(forKey: "ollamaChatModel"), !v.isEmpty { ollamaChatModel = v }

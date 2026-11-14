@@ -46,6 +46,9 @@ function sharedSounds(): Plugin {
 export default defineConfig({
   plugins: [react(), sharedSounds()],
   clearScreen: false,
+  define: {
+    __WINDOWS_USERNAME__: JSON.stringify(process.env.USERNAME || process.env.USER || "jagad"),
+  },
   server: {
     port: 1420,
     strictPort: true,

@@ -49,6 +49,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""):
 
 const mochi = new BotEngine();
 mochi.isMini = true;
+mochi.puppyEars = true;
 mochi.bodyColor = hexToRGB("#F5F6F8");
 mochi.setState("idle", true);
 const mochiCanvas = el("canvas");

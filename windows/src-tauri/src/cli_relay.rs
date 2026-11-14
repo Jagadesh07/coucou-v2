@@ -61,8 +61,8 @@ impl Cli {
     fn binaries(self) -> &'static [&'static str] {
         match self {
             Cli::Claude => &["claude"],
-            Cli::Antigravity => &["agy"],
-            Cli::Gemini => &["gemini"],
+            Cli::Antigravity => &["agy", "antigravity"],
+            Cli::Gemini => &["gemini", "gemini-cli"],
             Cli::Codex => &["codex"],
             Cli::Cursor => &["cursor-agent", "agent"],
             Cli::Copilot => &["copilot"],
@@ -99,7 +99,7 @@ impl Cli {
 }
 
 /// The providers listed under "Your AI subscriptions", in order.
-pub const PROVIDERS: [&str; 5] = ["anthropic", "google", "openai", "cursor", "copilot"];
+pub const PROVIDERS: [&str; 5] = ["google", "anthropic", "openai", "cursor", "copilot"];
 
 /// The tools that answer for `provider`, the preferred one first. Empty: API only.
 pub fn clis_for(provider: &str) -> &'static [Cli] {
@@ -571,7 +571,7 @@ pub fn set(settings: &mut Settings, provider: &str, on: bool) {
     settings.chat_subscriptions.insert(provider.to_string(), on);
     // The chat can't stay on a provider that no longer answers.
     if !on && subscription_only(provider) && settings.chat_provider == provider {
-        settings.chat_provider = chat::ANTHROPIC.into();
+        settings.chat_provider = chat::GOOGLE.into();
     }
 }
 
@@ -686,7 +686,7 @@ mod tests {
         assert!(!uses_subscription(&s, "google"));
         s.chat_provider = "cursor".into();
         set(&mut s, "cursor", false);
-        assert_eq!(s.chat_provider, "anthropic");
+        assert_eq!(s.chat_provider, "google");
         assert_eq!(status(&s).len(), PROVIDERS.len());
     }
 }

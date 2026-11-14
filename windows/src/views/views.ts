@@ -5,7 +5,7 @@
 import { h, svg, clear, dot } from "./dom";
 import { ICONS } from "./icons";
 import { Ticker } from "./ticker";
-import { State, type AgentTask } from "../core/state";
+import { State, defaultUserName, type AgentTask } from "../core/state";
 import { washRGBA, type IslandViewName, type Wash } from "../core/layout";
 import { createMiniBot, pruneMiniBots } from "../mochi/minibots";
 import { buildPrompt } from "./chat";
@@ -26,7 +26,9 @@ import { buildWhatsNew } from "./whatsnew";
 import { buildLaunch } from "./launch";
 import { buildFileShelf } from "./fileshelf";
 import { buildSpotifyCard, buildSpotifyPill, type SpotifyPillHost } from "./spotify";
-import { SPOTIFY_ID } from "../core/spotify";
+import { SPOTIFY_ID, Spotify } from "../core/spotify";
+import { buildMusicSynth } from "./synth";
+import { NotificationCenter } from "../core/notifications";
 import { buildWhatsAppCard } from "./whatsapp";
 import { WHATSAPP_ID } from "../core/whatsapp";
 import { MAIL_ID } from "../core/mail";
@@ -148,11 +150,110 @@ export function buildHeader(actions: ViewActions): ViewHost {
     actions.setView(v);
   }
 
+  const userNameText = h("span", { class: "user-name" });
+  const headerSynth = buildMusicSynth("header-synth");
+  headerSynth.onclick = (e) => {
+    e.stopPropagation();
+    actions.setView("overview");
+    State.setFocus(SPOTIFY_ID);
+  };
+  let editing = false;
+  const userTag = h(
+    "div",
+    {
+      class: "header-user",
+      title: tl("Edit"),
+      onclick: (e) => {
+        e.stopPropagation();
+        startEditing();
+      },
+      oncontextmenu: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const fonts = ["bricolage", "inter", "mono", "system"];
+        const cur = State.settings.userFont || "bricolage";
+        const next = fonts[(fonts.indexOf(cur) + 1) % fonts.length];
+        State.settings.userFont = next;
+        userTag.setAttribute("data-font", next);
+        void Bridge.saveSettings(State.settings);
+        State.notify();
+      },
+    },
+    userNameText,
+    headerSynth,
+  );
+
+  function startEditing() {
+    if (editing) return;
+    editing = true;
+    const current = State.settings.userName || "Madhan";
+    const input = h("input", {
+      type: "text",
+      class: "user-name-input",
+      value: current,
+      maxlength: "28",
+      onkeydown: (e: Event) => {
+        const ke = e as KeyboardEvent;
+        if (ke.key === "Enter") {
+          ke.preventDefault();
+          finish(true);
+        } else if (ke.key === "Escape") {
+          ke.preventDefault();
+          finish(false);
+        }
+      },
+      onblur: () => finish(true),
+    }) as HTMLInputElement;
+
+    clear(userTag);
+    userTag.append(input);
+    input.focus();
+    input.select();
+
+    function finish(saveVal: boolean) {
+      if (!editing) return;
+      editing = false;
+      const next = saveVal ? input.value.trim() || current : current;
+      State.settings.userName = next;
+      void Bridge.saveSettings(State.settings);
+      clear(userTag);
+      userTag.append(userNameText);
+      userNameText.textContent = next;
+      State.notify();
+    }
+  }
+
+  const notifDot = h("span", { class: "notif-bell-dot" });
+  const notifBellBtn = h(
+    "button",
+    {
+      class: "icon notif-bell-btn",
+      title: "Notifications",
+      onclick: () => {
+        actions.blip();
+        const unread = NotificationCenter.notifications.find((n) => n.unread);
+        if (unread) {
+          NotificationCenter.notify(unread);
+        } else {
+          NotificationCenter.notify({
+            app: "Windows",
+            title: "Notifications",
+            body: "Coucou Island notification system active.",
+            accentColor: "#00A4EF",
+          });
+        }
+      },
+    },
+    svg(ICONS.bell, 17),
+    notifDot,
+  );
+
   const el = h(
     "div",
     { id: "header" },
     h("div", { class: "tabs" }, tabHome, tabChat, tabShelf, tabDrop, tabLaunch),
-    h("div", { class: "header-actions" }, planPills, gearBtn, soundBtn, closeBtn),
+    userTag,
+    h("div", { class: "header-actions" }, planPills, notifBellBtn, gearBtn, soundBtn, closeBtn),
   );
   const headerActions = el.lastElementChild as HTMLElement;
 
@@ -160,6 +261,13 @@ export function buildHeader(actions: ViewActions): ViewHost {
     el,
     sync() {
       const v = State.view;
+      if (!editing) {
+        userNameText.textContent = State.settings.userName || defaultUserName();
+      }
+      userTag.setAttribute("data-font", State.settings.userFont || "bricolage");
+      const isMusic = State.spotifyPlaying || (Spotify.state.playing && !!Spotify.state.track);
+      headerSynth.classList.toggle("on", isMusic);
+      headerSynth.classList.toggle("playing", isMusic);
       tabHome.classList.toggle("on", v === "overview" || v === "empty");
       tabChat.classList.toggle("on", v === "prompt");
       tabShelf.classList.toggle("on", v === "fileshelf");
@@ -171,6 +279,9 @@ export function buildHeader(actions: ViewActions): ViewHost {
       clear(soundBtn);
       soundBtn.append(svg(State.settings.soundEnabled ? ICONS.speakerLine : ICONS.speakerSlashLine, 18, { stroke: 1.6 }));
       closeBtn.style.display = State.pendingApproval ? "none" : "";
+      const hasUnread = NotificationCenter.notifications.some((n) => n.unread);
+      notifDot.style.display = hasUnread ? "block" : "none";
+      notifBellBtn.classList.toggle("has-unread", hasUnread);
       syncPlanPills();
       el.style.opacity = v === "confused" ? "0" : "1";
     },
@@ -520,6 +631,12 @@ function lighten(hex: string, amount: number): string {
 
 // ── Empty ─────────────────────────────────────────────────────────────────────
 
+function askLabel(): Msg {
+  if (State.settings.chatProvider === "google") return tl("Ask Gemini");
+  if (State.settings.chatProvider === "anthropic") return tl("Ask Claude");
+  return tl("Ask Assistant");
+}
+
 function buildEmpty(actions: ViewActions): ViewHost {
   const body = h(
     "div",
@@ -531,7 +648,7 @@ function buildEmpty(actions: ViewActions): ViewHost {
       h("div", { class: "sub", text: tl("Drop a file or window, or ask me anything.") }),
     ),
     h("div", { class: "grow" }),
-    btn(tl("Ask Claude"), "primary", () => actions.setView("prompt")),
+    btn(askLabel(), "primary", () => actions.setView("prompt")),
   );
   return { el: h("div", { class: "view" }, card(null, body)), sync() {} };
 }

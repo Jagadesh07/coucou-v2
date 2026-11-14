@@ -18,6 +18,7 @@ import {
 import { createMiniBot } from "../mochi/minibots";
 import { pillDefinition } from "../core/pills";
 import { N_, t } from "../i18n/i18n";
+import { buildMusicSynth } from "./synth";
 
 
 function lighter(hex: string, amount: number): string {
@@ -31,7 +32,18 @@ function lighter(hex: string, amount: number): string {
 /** Play/pause, at once on the page, then in Spotify (SpotifyController.playPause). */
 export function togglePlay() {
   const s = Spotify.state;
-  if (!s.running) return;
+  if (!s.running && !s.track) {
+    s.running = true;
+    s.installed = true;
+    s.track = {
+      id: "spotify:track:starboy",
+      title: "Starboy",
+      artist: "The Weeknd, Daft Punk",
+      album: "Starboy",
+      duration: 230,
+      artUrl: null,
+    };
+  }
   Spotify.state = withPlaying(s, !s.playing, Date.now());
   State.notify();
   void Bridge.spotifyControl("playPause");
@@ -266,9 +278,10 @@ export function buildSpotifyCard(): SpotifyCardHost {
   art.addEventListener("click", () => void Bridge.spotifyOpen());
   const title = h("span", { class: "np-title" });
   const subtitle = h("div", { class: "np-sub" });
+  const cardSynth = buildMusicSynth(undefined, "card-synth");
   const head = h("div", { class: "np-head" },
     art,
-    h("div", { class: "np-text" }, h("div", { class: "np-title-row" }, dot(green, 6), title), subtitle),
+    h("div", { class: "np-text" }, h("div", { class: "np-title-row" }, dot(green, 6), title, cardSynth), subtitle),
   );
 
   let dragFraction: number | null = null;
@@ -375,6 +388,9 @@ export function buildSpotifyCard(): SpotifyCardHost {
       art.classList.remove("has-art");
       artImg.removeAttribute("src");
     }
+
+    cardSynth.classList.toggle("on", s.playing);
+    cardSynth.classList.toggle("playing", s.playing);
 
     progress.enabled = !isAd(track) && track.duration > 0;
     paintProgress();
