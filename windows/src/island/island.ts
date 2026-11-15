@@ -413,6 +413,7 @@ export class Island {
       onDismiss: (_notif, collapseIfOpened) => {
         if (collapseIfOpened && this.openedByNotification) {
           this.openedByNotification = false;
+          this.fsm.pinned = false;
           if (!State.isPinned && !this.wasInIsland) {
             this.setMode("compact");
           }
@@ -631,6 +632,7 @@ export class Island {
     if (shouldExpand) {
       if (State.mode !== "expanded") {
         this.openedByNotification = true;
+        this.fsm.pinned = true;
         this.fsm.forceHome();
         this.setMode("expanded");
       }

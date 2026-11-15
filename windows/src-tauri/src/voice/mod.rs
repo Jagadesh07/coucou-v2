@@ -53,9 +53,11 @@ fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<String>>> {
 }
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-/// Whether « OK Coucou » can run: the voice model and an assistant key (Google Gemini or Claude).
+/// Whether « OK Coucou » can run: the voice model is ready.
+/// Offline local commands (opening apps, music playback, time) work immediately;
+/// open-ended cloud questions use Gemini or Claude if a key is present.
 pub fn requirements_met() -> bool {
-    speech::is_ready() && (crate::secrets::present("google-api-key") || crate::secrets::present(crate::claude::KEY))
+    speech::is_ready()
 }
 
 /// Starts or stops listening to follow the preference.
@@ -201,7 +203,7 @@ fn run(app: AppHandle, stop: Arc<AtomicBool>) {
             mode = Mode::Wake;
             vad.hangover = 25;
             show(&app, Some(VoiceView { phase: "thinking".into(), heard: question.clone(), answer: String::new() }));
-            let reply = brain.respond(&app, &question);
+            let reply = try_local_command(&app, &question).or_else(|| brain.respond(&app, &question));
             let answer = reply.as_ref().map(|r| r.text.clone()).unwrap_or_default();
             if answer.is_empty() {
                 let done = reply.is_some_and(|r| r.acted);
@@ -459,8 +461,149 @@ fn open_app(name: &str) -> (String, bool) {
     }
 }
 
+/// Direct offline voice commands: opening apps, controlling music, and querying time.
+/// Executes immediately without latency or requiring external API keys.
+fn try_local_command(app: &AppHandle, text: &str) -> Option<brain::Reply> {
+    let norm = wake::normalize(text);
+    if norm.is_empty() {
+        return None;
+    }
+
+    // 1. Time query (English & French)
+    if matches!(
+        norm.as_str(),
+        "what time is it"
+            | "what is the time"
+            | "whats the time"
+            | "time"
+            | "current time"
+            | "tell me the time"
+            | "quelle heure est il"
+            | "il est quelle heure"
+            | "l heure"
+    ) {
+        let t = crate::platform::local_time();
+        let hour = if t.hour == 0 { 12 } else if t.hour > 12 { t.hour - 12 } else { t.hour };
+        let am_pm = if t.hour >= 12 { "PM" } else { "AM" };
+        let msg = format!("It is {}:{:02} {}.", hour, t.minute, am_pm);
+        return Some(brain::Reply { text: msg, acted: true });
+    }
+
+    // 2. Music controls
+    if matches!(
+        norm.as_str(),
+        "play music"
+            | "resume music"
+            | "play"
+            | "resume"
+            | "mets de la musique"
+            | "lance la musique"
+            | "joue de la musique"
+    ) {
+        let (res, did) = run_tool(app, "music", &json!({ "action": "play_pause" }));
+        return Some(brain::Reply { text: if did { "Playing.".into() } else { res }, acted: did });
+    }
+    if matches!(
+        norm.as_str(),
+        "pause music"
+            | "stop music"
+            | "pause"
+            | "stop"
+            | "mets en pause"
+            | "arrete la musique"
+    ) {
+        let (res, did) = run_tool(app, "music", &json!({ "action": "play_pause" }));
+        return Some(brain::Reply { text: if did { "Paused.".into() } else { res }, acted: did });
+    }
+    if matches!(
+        norm.as_str(),
+        "next song"
+            | "next track"
+            | "skip song"
+            | "skip track"
+            | "next"
+            | "morceau suivant"
+            | "chanson suivante"
+            | "suivant"
+    ) {
+        let (res, did) = run_tool(app, "music", &json!({ "action": "next" }));
+        return Some(brain::Reply { text: if did { "Next track.".into() } else { res }, acted: did });
+    }
+    if matches!(
+        norm.as_str(),
+        "previous song"
+            | "previous track"
+            | "previous"
+            | "morceau precedent"
+            | "chanson precedente"
+            | "precedent"
+    ) {
+        let (res, did) = run_tool(app, "music", &json!({ "action": "previous" }));
+        return Some(brain::Reply { text: if did { "Previous track.".into() } else { res }, acted: did });
+    }
+
+    // 3. Open application: "open <app>", "launch <app>", "start <app>", "ouvre <app>", "lance <app>"
+    let app_target = if let Some(rest) = norm.strip_prefix("open ") {
+        Some(rest.trim())
+    } else if let Some(rest) = norm.strip_prefix("launch ") {
+        Some(rest.trim())
+    } else if let Some(rest) = norm.strip_prefix("start ") {
+        Some(rest.trim())
+    } else if let Some(rest) = norm.strip_prefix("ouvre ") {
+        Some(rest.trim())
+    } else if let Some(rest) = norm.strip_prefix("lance ") {
+        Some(rest.trim())
+    } else {
+        None
+    };
+
+    if let Some(target) = app_target {
+        if !target.is_empty() {
+            let (msg, did) = open_app(target);
+            if did {
+                let friendly_name = match target {
+                    "whatsapp" => "WhatsApp",
+                    "spotify" => "Spotify",
+                    "chrome" => "Chrome",
+                    "discord" => "Discord",
+                    "firefox" => "Firefox",
+                    "code" | "vs code" | "vscode" => "VS Code",
+                    "terminal" => "Terminal",
+                    "settings" | "parametres" => "Settings",
+                    _ => target,
+                };
+                return Some(brain::Reply {
+                    text: format!("Opening {friendly_name}."),
+                    acted: true,
+                });
+            } else {
+                return Some(brain::Reply {
+                    text: msg,
+                    acted: false,
+                });
+            }
+        }
+    }
+
+    None
+}
+
 #[cfg(windows)]
 fn find_app(wanted: &str) -> Option<(String, Box<dyn FnOnce()>)> {
+    // 1. Well-known protocols / Windows Store apps
+    if wanted.contains("whatsapp") {
+        return Some(("WhatsApp".into(), Box::new(|| crate::platform::open_url("whatsapp:"))));
+    }
+    if wanted.contains("spotify") {
+        return Some(("Spotify".into(), Box::new(|| crate::platform::open_url("spotify:"))));
+    }
+    if wanted == "settings" || wanted == "parametres" || wanted == "windows settings" {
+        return Some(("Settings".into(), Box::new(|| crate::platform::open_url("ms-settings:"))));
+    }
+    if wanted == "calculator" || wanted == "calculette" || wanted == "calc" {
+        return Some(("Calculator".into(), Box::new(|| crate::platform::open_url("calculator:"))));
+    }
+
     let mut roots = Vec::new();
     if let Some(p) = std::env::var_os("APPDATA") {
         roots.push(std::path::PathBuf::from(p).join("Microsoft\\Windows\\Start Menu\\Programs"));
@@ -468,6 +611,10 @@ fn find_app(wanted: &str) -> Option<(String, Box<dyn FnOnce()>)> {
     if let Some(p) = std::env::var_os("ProgramData") {
         roots.push(std::path::PathBuf::from(p).join("Microsoft\\Windows\\Start Menu\\Programs"));
     }
+    if let Some(p) = std::env::var_os("LOCALAPPDATA") {
+        roots.push(std::path::PathBuf::from(p).join("Programs"));
+    }
+
     let mut best: Option<(usize, std::path::PathBuf)> = None;
     let mut stack = roots;
     while let Some(dir) = stack.pop() {
@@ -485,9 +632,21 @@ fn find_app(wanted: &str) -> Option<(String, Box<dyn FnOnce()>)> {
             }
         }
     }
-    let (_, path) = best?;
-    let label = path.file_stem()?.to_string_lossy().to_string();
-    Some((label, Box::new(move || crate::platform::reveal_folder(&path.to_string_lossy()))))
+
+    if let Some((_, path)) = best {
+        let label = path.file_stem()?.to_string_lossy().to_string();
+        return Some((label, Box::new(move || crate::platform::open_url(&path.to_string_lossy()))));
+    }
+
+    // Check executables on PATH (e.g. notepad, code, mspaint)
+    if let Some(path) = crate::platform::find_on_path(wanted) {
+        let label = path.file_stem()?.to_string_lossy().to_string();
+        return Some((label, Box::new(move || {
+            let _ = std::process::Command::new(path).spawn();
+        })));
+    }
+
+    None
 }
 
 #[cfg(target_os = "linux")]
