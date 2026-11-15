@@ -6,8 +6,9 @@ import { dropdownSelect } from "../views/dropdown";
 // Verified against Google AI's catalog. Account discovery replaces these
 // choices when a key is present; never replace a saved model automatically.
 export const GEMINI_MODELS: ModelInfo[] = [
-  { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
   { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
   { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
   { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
 ];

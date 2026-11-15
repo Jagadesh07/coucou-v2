@@ -102,7 +102,7 @@ Pills: {pills}",
     )
 }
 
-async fn gemini_voice_turn(system: &str, messages: &[Value], tools: &[Value]) -> Result<Value, String> {
+async fn gemini_voice_turn(model: &str, system: &str, messages: &[Value], tools: &[Value]) -> Result<Value, String> {
     let key = crate::secrets::get("google-api-key").ok_or_else(|| "Google API key missing".to_string())?;
     let endpoint = reqwest::Url::parse("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions").map_err(|e| e.to_string())?;
     let mut formatted_msgs = vec![json!({ "role": "system", "content": system })];
@@ -169,8 +169,14 @@ async fn gemini_voice_turn(system: &str, messages: &[Value], tools: &[Value]) ->
         }
     }
 
+    let active_model = if model.is_empty() || model == "gemini-2.0-flash" {
+        "gemini-3.8-flash"
+    } else {
+        model
+    };
+
     let mut body = json!({
-        "model": "gemini-2.0-flash",
+        "model": active_model,
         "messages": formatted_msgs,
         "max_tokens": 1024
     });
@@ -242,9 +248,13 @@ impl Brain {
         let pills = super::ask_island(app, "pills", json!({ "action": "list" })).unwrap_or_default();
         let system = system_prompt(&pills);
         let tools = tools();
-        let chat_model = app
+        let (chat_model, google_model) = app
             .try_state::<crate::Shared>()
-            .map(|s| s.settings.lock().unwrap().model.clone())
+            .map(|s| {
+                let st = s.settings.lock().unwrap();
+                let g = st.chat_models.get("google").cloned().unwrap_or_default();
+                (st.model.clone(), g)
+            })
             .unwrap_or_default();
         let mut acted = false;
         let mut spoken = String::new();
@@ -252,7 +262,20 @@ impl Brain {
         for _ in 0..5 {
             let turn = tauri::async_runtime::block_on(async {
                 if has_google {
-                    gemini_voice_turn(&system, &self.messages, &tools).await
+                    let target = if !google_model.is_empty() && google_model != "gemini-2.0-flash" {
+                        &google_model
+                    } else if !chat_model.is_empty() && chat_model.contains("gemini") && chat_model != "gemini-2.0-flash" {
+                        &chat_model
+                    } else {
+                        "gemini-3.8-flash"
+                    };
+                    match gemini_voice_turn(target, &system, &self.messages, &tools).await {
+                        Ok(v) => Ok(v),
+                        Err(err) => {
+                            crate::log::line(format!("voice: gemini {target} failed: {err}; trying gemini-3.8-flash"));
+                            gemini_voice_turn("gemini-3.8-flash", &system, &self.messages, &tools).await
+                        }
+                    }
                 } else {
                     match crate::claude::voice_turn(FAST_MODEL, &system, &self.messages, &tools).await {
                         Ok(v) => Ok(v),
